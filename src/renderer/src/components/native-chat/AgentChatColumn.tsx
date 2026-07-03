@@ -51,8 +51,9 @@ function useActiveAgentTarget(): ResolvedAgentTarget | null {
         : null) ??
       Object.values(snapshot.agentStatusByPaneKey).find((e) => e.worktreeId === worktreeId) ??
       null
-    if (entry) {
-      const { tabId, leafId } = parsePaneKey(entry.paneKey)
+    const parsed = entry ? parsePaneKey(entry.paneKey) : null
+    if (entry && parsed) {
+      const { tabId, leafId } = parsed
       const launchAgent =
         snapshot.tabsByWorktree[worktreeId]?.find((t) => t.id === tabId)?.launchAgent ?? null
       // Replicate getPtyIdForPaneKey: prefer the leaf-bound pty, else the tab's

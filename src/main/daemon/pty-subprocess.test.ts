@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 import type * as LocalPtyUtils from '../providers/local-pty-utils'
 
 const {
@@ -173,6 +173,33 @@ describe('createPtySubprocess', () => {
         cwd: '/home/user',
         name: 'xterm-256color'
       })
+    )
+  })
+
+  it('uses bundled ConPTY for native Windows daemon terminals', () => {
+    const proc = mockPtyProcess()
+    spawnMock.mockReturnValue(proc)
+    const platform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { value: 'win32' })
+
+    try {
+      createPtySubprocess({
+        sessionId: 'test',
+        cols: 80,
+        rows: 24,
+        cwd: 'C:\\repo',
+        env: { COMSPEC: 'C:\\Windows\\System32\\cmd.exe' }
+      })
+    } finally {
+      if (platform) {
+        Object.defineProperty(process, 'platform', platform)
+      }
+    }
+
+    expect(spawnMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Array),
+      expect.objectContaining({ useConptyDll: true })
     )
   })
 
@@ -729,6 +756,55 @@ describe('createPtySubprocess', () => {
 
     const env = spawnMock.mock.calls.at(-1)?.[2].env
     expect(env.ELECTRON_RUN_AS_NODE).toBeUndefined()
+  })
+
+  it('does not inherit AppImage runtime env into daemon PTY shells', () => {
+    const proc = mockPtyProcess()
+    spawnMock.mockReturnValue(proc)
+    const platform = Object.getOwnPropertyDescriptor(process, 'platform')
+    const saved = {
+      APPIMAGE: process.env.APPIMAGE,
+      APPDIR: process.env.APPDIR,
+      ARGV0: process.env.ARGV0,
+      OWD: process.env.OWD,
+      APPIMAGE_LIBRARY_PATH: process.env.APPIMAGE_LIBRARY_PATH,
+      PATH: process.env.PATH,
+      LD_LIBRARY_PATH: process.env.LD_LIBRARY_PATH
+    }
+    Object.defineProperty(process, 'platform', { value: 'linux' })
+    process.env.APPIMAGE = '/data/apps/orca.appimage'
+    process.env.APPDIR = '/tmp/.mount_orca123'
+    process.env.ARGV0 = '/data/apps/orca.appimage'
+    process.env.OWD = '/home/user/project'
+    process.env.APPIMAGE_LIBRARY_PATH = '/tmp/.mount_orca123/usr/lib'
+    process.env.PATH = ['/tmp/.mount_orca123', '/tmp/.mount_orca123/usr/sbin', '/usr/bin'].join(
+      delimiter
+    )
+    process.env.LD_LIBRARY_PATH = ['/tmp/.mount_orca123/usr/lib', '/opt/audio/lib'].join(delimiter)
+
+    try {
+      createPtySubprocess({ sessionId: 'test', cols: 80, rows: 24 })
+    } finally {
+      if (platform) {
+        Object.defineProperty(process, 'platform', platform)
+      }
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) {
+          delete process.env[key]
+        } else {
+          process.env[key] = value
+        }
+      }
+    }
+
+    const env = spawnMock.mock.calls.at(-1)?.[2].env
+    expect(env.APPIMAGE).toBeUndefined()
+    expect(env.APPDIR).toBeUndefined()
+    expect(env.ARGV0).toBeUndefined()
+    expect(env.OWD).toBeUndefined()
+    expect(env.APPIMAGE_LIBRARY_PATH).toBeUndefined()
+    expect(env.PATH).toBe('/usr/bin')
+    expect(env.LD_LIBRARY_PATH).toBe('/opt/audio/lib')
   })
 
   it('does not inherit parent agent hook endpoint for development hook env', () => {
@@ -1374,7 +1450,7 @@ describe('createPtySubprocess', () => {
     )
   })
 
-  it('falls back to powershell.exe when PowerShell 7 is selected but unavailable on Windows', () => {
+  it('keeps PowerShell 7 selected when the pwsh availability probe is cold-false on Windows', () => {
     const proc = mockPtyProcess()
     spawnMock.mockReturnValue(proc)
     const platform = Object.getOwnPropertyDescriptor(process, 'platform')
@@ -1397,13 +1473,14 @@ describe('createPtySubprocess', () => {
     }
 
     expect(spawnMock).toHaveBeenCalledWith(
-      WINDOWS_POWERSHELL_ABS,
+      PWSH7_ABS,
       POWERSHELL_OSC133_COMMAND_ARGS,
       expect.any(Object)
     )
+    expect(isPwshAvailableMock).not.toHaveBeenCalled()
   })
 
-  it('falls back to powershell.exe when shellOverride requests pwsh.exe but pwsh is unavailable on Windows', () => {
+  it('keeps a pwsh.exe shellOverride when the pwsh availability probe is cold-false on Windows', () => {
     const proc = mockPtyProcess()
     spawnMock.mockReturnValue(proc)
     const platform = Object.getOwnPropertyDescriptor(process, 'platform')
@@ -1426,10 +1503,11 @@ describe('createPtySubprocess', () => {
     }
 
     expect(spawnMock).toHaveBeenCalledWith(
-      WINDOWS_POWERSHELL_ABS,
+      PWSH7_ABS,
       POWERSHELL_OSC133_COMMAND_ARGS,
       expect.any(Object)
     )
+    expect(isPwshAvailableMock).not.toHaveBeenCalled()
   })
 
   it('ignores the PowerShell implementation setting for cmd.exe on Windows', () => {
@@ -2215,25 +2293,28 @@ describe('checkPtySpawnHealth (retry on transient failure)', () => {
   // Why: a busy machine right after an upgrade can make one probe fail; the
   // retry must keep a genuinely healthy daemon out of degraded mode. Windows
   // short-circuits checkPtySpawnHealth, so this is a POSIX-only behavior.
-  itOnPosixHost('retries once and resolves when the first probe fails but the second succeeds', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    spawnMock
-      .mockImplementationOnce(() => {
-        const proc = mockPtyProcess()
-        queueMicrotask(() => proc._simulateExit(1))
-        return proc
-      })
-      .mockImplementationOnce(() => {
-        const proc = mockPtyProcess()
-        queueMicrotask(() => proc._simulateExit(0))
-        return proc
-      })
+  itOnPosixHost(
+    'retries once and resolves when the first probe fails but the second succeeds',
+    async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      spawnMock
+        .mockImplementationOnce(() => {
+          const proc = mockPtyProcess()
+          queueMicrotask(() => proc._simulateExit(1))
+          return proc
+        })
+        .mockImplementationOnce(() => {
+          const proc = mockPtyProcess()
+          queueMicrotask(() => proc._simulateExit(0))
+          return proc
+        })
 
-    await expect(checkPtySpawnHealth()).resolves.toBeUndefined()
-    expect(spawnMock).toHaveBeenCalledTimes(2)
-    expect(warn).toHaveBeenCalled()
-    warn.mockRestore()
-  })
+      await expect(checkPtySpawnHealth()).resolves.toBeUndefined()
+      expect(spawnMock).toHaveBeenCalledTimes(2)
+      expect(warn).toHaveBeenCalled()
+      warn.mockRestore()
+    }
+  )
 
   itOnPosixHost('rejects after exhausting retries when every probe fails', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})

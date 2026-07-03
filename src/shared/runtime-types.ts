@@ -29,6 +29,8 @@ import type {
 } from './mobile-markdown-document'
 import type { RuntimeCapability } from './protocol-version'
 import type { RemoteRuntimeSharedConnectionDiagnostics } from './remote-runtime-shared-control-types'
+import type { SleepingAgentLaunchConfig } from './agent-session-resume'
+import type { StartupCommandDelivery } from './codex-startup-delivery'
 
 export type { RuntimeMarkdownReadTabResult, RuntimeMarkdownSaveTabResult }
 
@@ -133,6 +135,7 @@ export type RuntimeMobileSessionTerminalTab = {
   terminalTheme?: RuntimeMobileTerminalTheme
   agentStatus?: AgentStatusEntry | null
   launchAgent?: TuiAgent
+  startupCwd?: string
   parentLayout?: TerminalLayoutSnapshot
   /** Tab-level color/pin (per parentTabId), host-persisted for remote servers. */
   color?: string | null
@@ -317,6 +320,24 @@ export type RuntimeFileReadResult = {
   byteLength: number
 }
 
+export type RuntimeTerminalPathOpenTarget =
+  | {
+      kind: 'worktree-file'
+      provider: 'local' | 'ssh'
+      relativePath: string
+      absolutePath: string
+    }
+  | {
+      kind: 'absolute-file'
+      provider: 'local' | 'ssh'
+      absolutePath: string
+      grantId: string
+    }
+  | {
+      kind: 'unsupported'
+      reason: string
+    }
+
 /** Result of resolving a file path tapped in the mobile terminal against the
  *  worktree root (+ optional cwd). relativePath is null when the path resolves
  *  outside the worktree (not openable via the worktree-scoped file RPCs). */
@@ -328,6 +349,7 @@ export type RuntimeTerminalPathResolution = {
   absolutePath: string | null
   exists: boolean
   isDirectory: boolean
+  openTarget?: RuntimeTerminalPathOpenTarget
 }
 
 export type RuntimeFilePreviewResult = {
@@ -455,6 +477,31 @@ export type RuntimeTerminalAgentStatus = {
 }
 
 export type RuntimeTerminalPresentation = 'background' | 'focused'
+type RuntimeTerminalCreateBaseRequestPayload = {
+  requestId: string
+  worktreeId?: string
+  afterTabId?: string
+  targetGroupId?: string
+  command?: string
+  cwd?: string
+  env?: Record<string, string>
+  launchConfig?: SleepingAgentLaunchConfig
+  launchToken?: string
+  launchAgent?: TuiAgent
+  startupCommandDelivery?: StartupCommandDelivery
+  title?: string
+  activate?: boolean
+  presentation?: RuntimeTerminalPresentation
+}
+
+export type RuntimeTerminalCreateRequestPayload =
+  | (RuntimeTerminalCreateBaseRequestPayload & { source?: undefined })
+  | (RuntimeTerminalCreateBaseRequestPayload & {
+      worktreeId: string
+      // Why: only the host-owned runtime-session bridge may bypass the renderer's
+      // active-runtime local terminal guard; ordinary UI requests must omit this.
+      source: 'runtime-session'
+    })
 
 export type RuntimeTerminalCreate = {
   handle: string
