@@ -39,6 +39,17 @@ describe('selectNativeChatViewState', () => {
     expect(state).toEqual({ kind: 'error', message: 'boom' })
   })
 
+  it('treats a missing transcript as empty, not an error', () => {
+    const state = selectNativeChatViewState(
+      session({
+        messages: [],
+        status: 'error',
+        error: 'No transcript found for claude session sess'
+      })
+    )
+    expect(state.kind).toBe('empty')
+  })
+
   it('maps empty when there are no messages', () => {
     expect(selectNativeChatViewState(session({ messages: [], status: 'ready' })).kind).toBe('empty')
   })

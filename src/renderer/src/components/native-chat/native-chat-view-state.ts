@@ -22,7 +22,15 @@ export type NativeChatViewState =
  */
 export function selectNativeChatViewState(session: NativeChatSession): NativeChatViewState {
   if (session.status === 'error') {
-    return { kind: 'error', message: session.error ?? 'Conversation could not be loaded.' }
+    const message = session.error ?? 'Conversation could not be loaded.'
+    // A missing transcript isn't a failure — it's a chat that simply hasn't
+    // started yet (brand-new session, no transcript file written). Show the
+    // friendly empty state instead of a scary error. The backend emits this
+    // exact prefix in transcript-reader / transcript-read-cache.
+    if (message.startsWith('No transcript found')) {
+      return { kind: 'empty' }
+    }
+    return { kind: 'error', message }
   }
   if (session.messages.length > 0) {
     return { kind: 'ready', isWorking: session.status === 'working' }

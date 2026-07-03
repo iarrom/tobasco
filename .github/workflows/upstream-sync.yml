@@ -1,0 +1,122 @@
+# [FORK-ONLY] Авто-синхронизация с upstream (stablyai/orca).
+# Файл существует только в форке; upstream его не создаёт → merge-конфликтов нет.
+#
+# Раз в день (и по кнопке) пытается влить upstream/main в наш main:
+#   - конфликт  → открывает issue со списком файлов, ничего не пушит;
+#   - чисто     → пушит ветку и открывает PR, прогнав typecheck как сигнал.
+# Решение о мердже всегда за человеком — PR не вливается автоматически.
+name: Upstream sync
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # каждый день 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      UPSTREAM_URL: https://github.com/stablyai/orca.git
+    steps:
+      - name: Checkout main (полная история)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Настроить git-бота
+        run: |
+          git config user.name "upstream-sync-bot"
+          git config user.email "actions@github.com"
+
+      - name: Получить upstream
+        run: |
+          git remote add upstream "$UPSTREAM_URL" 2>/dev/null || git remote set-url upstream "$UPSTREAM_URL"
+          git fetch --quiet upstream main
+
+      - name: Есть ли новые коммиты?
+        id: gate
+        run: |
+          behind=$(git rev-list --count HEAD..upstream/main)
+          echo "behind=$behind" >> "$GITHUB_OUTPUT"
+          echo "Позади upstream/main на $behind коммит(ов)."
+
+      - name: Попытка merge
+        if: steps.gate.outputs.behind != '0'
+        id: merge
+        run: |
+          branch="auto/upstream-sync-$(date -u +%Y%m%d)"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          git checkout -b "$branch"
+          if git merge --no-edit upstream/main; then
+            echo "status=clean" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=conflict" >> "$GITHUB_OUTPUT"
+            # Список конфликтных файлов для issue.
+            git diff --name-only --diff-filter=U > /tmp/conflicts.txt || true
+            git merge --abort
+          fi
+
+      - name: Открыть issue при конфликте
+        if: steps.merge.outputs.status == 'conflict'
+        run: |
+          title="Upstream sync: конфликт ($(date -u +%Y-%m-%d))"
+          {
+            echo "Авто-merge \`upstream/main\` упал на конфликтах. Нужен ручной мердж:"
+            echo
+            echo '```'
+            echo 'git fetch upstream && git merge upstream/main'
+            echo '```'
+            echo
+            echo "Конфликтные файлы:"
+            echo '```'
+            cat /tmp/conflicts.txt
+            echo '```'
+            echo
+            echo "Подсказка: \`bash fork/scripts/divergence.sh\` покажет наши вставки [FORK]."
+          } > /tmp/body.md
+          gh issue create --title "$title" --body-file /tmp/body.md --label "upstream-sync" || \
+          gh issue create --title "$title" --body-file /tmp/body.md
+
+      - name: Setup Node + pnpm
+        if: steps.merge.outputs.status == 'clean'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Прогнать typecheck (сигнал, не блокер)
+        if: steps.merge.outputs.status == 'clean'
+        id: checks
+        continue-on-error: true
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+
+      - name: Запушить ветку и открыть PR
+        if: steps.merge.outputs.status == 'clean'
+        run: |
+          branch="${{ steps.merge.outputs.branch }}"
+          git push --force-with-lease origin "$branch"
+          check="${{ steps.checks.outcome }}"
+          {
+            echo "Авто-merge \`upstream/main\` прошёл **без конфликтов**."
+            echo
+            echo "- Отставание было: ${{ steps.gate.outputs.behind }} коммит(ов)"
+            echo "- typecheck: \`$check\`"
+            echo
+            echo "Проверьте \`bash fork/scripts/divergence.sh\` и смерджите вручную."
+          } > /tmp/pr.md
+          gh pr create --base main --head "$branch" \
+            --title "Upstream sync ($(date -u +%Y-%m-%d))" \
+            --body-file /tmp/pr.md || echo "PR уже существует."

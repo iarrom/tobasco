@@ -385,9 +385,10 @@ function NativeChatResolvedView({
           <NativeChatEmptyState kind="loading" />
         ) : viewState.kind === 'error' ? (
           <NativeChatEmptyState kind="error" message={viewState.message} />
-        ) : viewState.kind === 'empty' ? (
-          <NativeChatEmptyState kind="empty" agent={agent} />
-        ) : (
+        ) : viewState.kind ===
+          'empty' ? // [FORK] Пустой чат: убрали заглушку «Start a chat…», композер
+        // центрируется по вертикали нижним flex-1 спейсером — как в Cursor.
+        null : (
           <NativeChatMessageList
             session={sessionWithPending}
             isWorking={isWorking}
@@ -413,6 +414,9 @@ function NativeChatResolvedView({
         onOptimisticSend={onOptimisticSend}
         onSlashCommand={onSlashCommand}
       />
+      {/* [FORK] Нижний спейсер: в пустом чате балансирует верхний flex-1,
+          выставляя композер по центру пейна (как в Cursor). */}
+      {viewState.kind === 'empty' ? <div className="flex-1" /> : null}
       {contextMenu.menu}
     </div>
   )

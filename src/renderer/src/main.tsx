@@ -1,4 +1,8 @@
 import './assets/main.css'
+// [FORK] Fork-оверлей токенов оформления. Грузится после main.css, чтобы
+// переопределять токены без правки upstream. Пустой файл = ноль изменений.
+import '../../../fork/styles/fork-overrides.css'
+// [/FORK]
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'

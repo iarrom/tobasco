@@ -17,7 +17,8 @@ import {
   Minimize2,
   MoreHorizontal,
   PanelLeft,
-  PanelRight
+  PanelRight,
+  Search
 } from 'lucide-react'
 import logo from '../../../resources/logo.svg'
 import { SYNC_FIT_PANES_EVENT, TOGGLE_TERMINAL_PANE_EXPAND_EVENT } from '@/constants/terminal'
@@ -55,6 +56,9 @@ import {
   useSystemPrefersDark
 } from './components/terminal-pane/use-system-prefers-dark'
 import RightSidebar from './components/right-sidebar'
+// [FORK] Постоянная колонка-чат активного агента (Cursor-раскладка).
+import AgentChatColumn from './components/native-chat/AgentChatColumn'
+import { useAgentChatColumnState } from './components/native-chat/agent-chat-column-state'
 import { StarNagCard } from './components/StarNagCard'
 import { StarNagAgentValueMomentObserver } from './components/star-nag/StarNagAgentValueMomentObserver'
 import { StarNagToastHost } from './components/star-nag/StarNagToastHost'
@@ -1430,6 +1434,12 @@ function App(): React.JSX.Element {
   // Why: suppress right sidebar controls on full-page navigation surfaces
   // since those surfaces intentionally own the full content area.
   const showRightSidebarControls = !creationLayoutActive && canShowRightSidebarForView(activeView)
+  // [FORK] Ширина/развёрнутость колонки-чата агента (fork-стор).
+  const { width: chatColumnWidth, expanded: chatColumnExpanded } = useAgentChatColumnState(
+    useShallow((s) => ({ width: s.width, expanded: s.expanded }))
+  )
+  // [FORK] Чат-колонка показывается в воркспейс-виде при открытом воркспейсе.
+  const agentChatColumnVisible = activeView === 'terminal' && !!activeWorktreeId
 
   const handleToggleExpand = (): void => {
     if (!effectiveActiveTabId) {
@@ -1978,6 +1988,23 @@ function App(): React.JSX.Element {
             </TooltipContent>
           </Tooltip>
         )}
+        {/* [FORK] Поиск воркспейсов/вкладок иконкой рядом с тогглом (как в Cursor). */}
+        {showSidebar && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className="sidebar-toggle"
+                onClick={() => actions.openModal('worktree-palette')}
+                aria-label={translate('auto.components.sidebar.SidebarNav.80611a8b10', 'Search')}
+              >
+                <Search size={16} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={6}>
+              {translate('auto.components.sidebar.SidebarNav.80611a8b10', 'Search')}
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
       {/* Why: Back/Forward traverse mixed worktree + page history, so the
           cluster is shown wherever the history shortcut is live. Hidden in
@@ -2226,7 +2253,34 @@ function App(): React.JSX.Element {
                         </RecoverableRenderErrorBoundary>
                       )
                     ) : null}
-                    <div className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden">
+                    {/* [FORK] Постоянная колонка-чат активного агента между сайдбаром
+                        и вкладками (Cursor-раскладка). Гейт: открыт воркспейс. */}
+                    {agentChatColumnVisible ? (
+                      <div
+                        className={`relative flex min-h-0 flex-col border-l border-border${
+                          chatColumnExpanded ? ' flex-1 min-w-0' : ' shrink-0'
+                        }`}
+                        style={chatColumnExpanded ? undefined : { width: chatColumnWidth }}
+                      >
+                        <RecoverableRenderErrorBoundary
+                          boundaryId="fork.agent-chat-column"
+                          surface="sidebar"
+                          resetKey={activeWorktreeId}
+                          title="Чат агента не загрузился."
+                          description="Остальной воркспейс открыт. Повторите загрузку колонки."
+                        >
+                          <AgentChatColumn />
+                        </RecoverableRenderErrorBoundary>
+                      </div>
+                    ) : null}
+                    {/* [FORK] Центр (вкладки) прячется, когда чат развёрнут на весь центр. */}
+                    <div
+                      className={
+                        agentChatColumnVisible && chatColumnExpanded
+                          ? 'hidden'
+                          : 'flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden'
+                      }
+                    >
                       {stackedSidebarOpen ? (
                         <div className="titlebar">{titlebarMainStrip}</div>
                       ) : null}
@@ -2335,7 +2389,8 @@ function App(): React.JSX.Element {
               Its heavy panels disconnect while closed so workspace wake stays
               responsive. Unmount on the tasks view since that surface is
               intentionally distraction-free. */}
-                {showRightSidebarControls ? (
+                {/* [FORK] Правый сайдбар скрыт, когда чат развёрнут на весь центр. */}
+                {showRightSidebarControls && !(agentChatColumnVisible && chatColumnExpanded) ? (
                   <RecoverableRenderErrorBoundary
                     boundaryId="right-sidebar"
                     surface="right-sidebar"

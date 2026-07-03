@@ -320,7 +320,9 @@ export function NativeChatMessageList({
         className="scrollbar-sleek h-full overflow-y-auto px-3 pt-10 pb-4 sm:px-4"
       >
         <div
-          className="mx-auto flex w-full max-w-3xl flex-col gap-3"
+          // [FORK] max-w-xl, чтобы лента сообщений совпадала по ширине с композером
+          // (единая центрированная колонка, как в Cursor).
+          className="mx-auto flex w-full max-w-xl flex-col gap-3"
           // Why: `zoom` scales the chat transcript's text and layout together,
           // scoped to this container so the rest of the app is untouched. It's
           // the desktop analog of the mobile pinch-zoom (Chromium/Electron only).

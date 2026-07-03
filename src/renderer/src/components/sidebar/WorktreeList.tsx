@@ -212,7 +212,7 @@ import {
   effectiveExternalWorktreeVisibility,
   isLegacyRepoForExternalWorktreeVisibility
 } from '../../../../shared/worktree-ownership'
-import { RepoIconGlyph } from '@/components/repo/repo-icon'
+// [FORK] RepoIconGlyph удалён — цветные аватары проектов больше не рендерятся.
 import { RepoForkIndicator } from '@/components/repo/repo-fork-indicator'
 import ImportedWorktreesVisibilityLine from './ImportedWorktreesVisibilityLine'
 import NewExternalWorktreesInboxLine from './NewExternalWorktreesInboxLine'
@@ -4112,16 +4112,8 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
                             : undefined
                         }
                       >
-                        {row.repo ? (
-                          <RepoIconGlyph
-                            repoIcon={row.repo.repoIcon}
-                            color={repoHeaderColor}
-                            className="size-4"
-                            iconClassName="size-3.5"
-                          />
-                        ) : (
-                          <row.icon className="size-3" />
-                        )}
+                        {/* [FORK] Без цветного аватара проекта — нейтральная иконка, как в Cursor. */}
+                        <row.icon className="size-3" />
                       </div>
                     ) : null}
 

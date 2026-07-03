@@ -86,7 +86,8 @@ export function NativeChatComposerField({
   return (
     <div className="shrink-0 bg-background">
       <div className="px-3 py-2 sm:px-4">
-        <div className="relative mx-auto w-full max-w-3xl">
+        {/* [FORK] Уже композер (max-w-xl вместо 3xl) — компактнее, как в Cursor. */}
+        <div className="relative mx-auto w-full max-w-xl">
           {autocomplete.mode === 'slash' && autocomplete.suggestions.length > 0 ? (
             <NativeChatSlashMenu
               suggestions={autocomplete.suggestions}
@@ -114,7 +115,8 @@ export function NativeChatComposerField({
             data-native-file-drop-target={NATIVE_FILE_DROP_TARGET.composer}
             className={cn(
               'rounded-xl border border-input bg-card p-1.5 shadow-xs transition-colors',
-              'focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30'
+              // [FORK] Убрали focus-ring/border на композере чата — лишняя подсветка отвлекает.
+              'dark:bg-input/30'
             )}
           >
             {imageAttachments.length > 0 ? (
@@ -162,8 +164,10 @@ export function NativeChatComposerField({
               // Why: coarse-pointer min-height follows the app's touch target convention.
               // scrollbar-sleek keeps the overflow gutter from showing the heavy
               // native scrollbar once the draft exceeds max-height.
+              // field-sizing-content grows the textarea with the draft between
+              // min-h/max-h (auto-resize without JS), then scrolls past max-h.
               className={cn(
-                'scrollbar-sleek min-h-12 max-h-28 w-full resize-none bg-transparent px-2 py-1 text-sm outline-none pointer-coarse:min-h-14',
+                'scrollbar-sleek field-sizing-content min-h-12 max-h-64 w-full resize-none bg-transparent px-2 py-1 text-sm outline-none pointer-coarse:min-h-14',
                 'placeholder:text-muted-foreground/60 disabled:cursor-not-allowed disabled:opacity-50'
               )}
             />
