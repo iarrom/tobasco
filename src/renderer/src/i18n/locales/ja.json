@@ -12387,6 +12387,20 @@
           "done": "Done",
           "inProgress": "In Progress",
           "todo": "To Do"
+        },
+        "contextMenu": {
+          "updateFailed": "Failed to update issue",
+          "copied": "Copied",
+          "dueToday": "Today",
+          "dueTomorrow": "Tomorrow",
+          "dueNextWeek": "Next week",
+          "noDueDate": "No due date",
+          "noEstimate": "No estimate",
+          "startWorkspace": "Start workspace",
+          "copy": "Copy",
+          "copyId": "Copy ID",
+          "copyTitle": "Copy title",
+          "copyUrl": "Copy URL"
         }
       }
     },

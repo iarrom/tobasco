@@ -35,7 +35,10 @@ import type { GitLabWorkItem } from '../../../../shared/gitlab-types'
 import type { LaunchSource } from '../../../../shared/telemetry-events'
 import type { TaskSourceContext } from '../../../../shared/task-source-context'
 import { sanitizeTasksNavSelection } from '@/components/tasks/tasks-nav-state'
-import { normalizeTaskSavedViews } from '@/components/tasks/task-saved-views'
+import {
+  normalizeTaskSavedViewConfig,
+  normalizeTaskSavedViews
+} from '@/components/tasks/task-saved-views'
 import { normalizeTaskSidebarState } from '@/components/tasks/task-sidebar-state'
 import { PET_SIZE_DEFAULT, PET_SIZE_MAX, PET_SIZE_MIN } from '../../../../shared/types'
 import {
@@ -531,6 +534,11 @@ function sanitizeTaskResumeState(value: unknown): TaskResumeState | undefined {
   const tasksNav = sanitizeTasksNavSelection(input.tasksNav)
   if (tasksNav) {
     next.tasksNav = tasksNav
+  }
+  // [FORK] Last-used Linear list configuration (grouping/ordering/etc.).
+  const linearViewConfig = normalizeTaskSavedViewConfig(input.linearViewConfig)
+  if (Object.keys(linearViewConfig).length > 0) {
+    next.linearViewConfig = linearViewConfig
   }
 
   return Object.keys(next).length > 0 ? next : undefined

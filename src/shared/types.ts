@@ -3270,6 +3270,10 @@ export type TaskResumeState = {
   jiraQuery?: string
   /** [FORK] Active Tasks sidebar nav selection (Linear-parity Tasks page). */
   tasksNav?: TasksNavSelection
+  /** [FORK] Last-used Linear list configuration (grouping, ordering, view
+   *  mode, display properties, filters) so it survives leaving the page.
+   *  Search is excluded — `linearQuery` above owns it. */
+  linearViewConfig?: TaskSavedViewConfig
 }
 
 export type RightSidebarTab =

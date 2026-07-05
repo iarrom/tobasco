@@ -101,6 +101,7 @@ import { TaskFilterBar } from '@/components/tasks/TaskFilterBar'
 import { TaskDisplayPopover } from '@/components/tasks/TaskDisplayPopover'
 import { TasksInboxPane } from '@/components/tasks/TasksInboxPane'
 import { TaskViewDetailsPanel } from '@/components/tasks/TaskViewDetailsPanel'
+import { LinearIssueContextMenu } from '@/components/tasks/LinearIssueContextMenu'
 import { DEFAULT_TASKS_NAV, serializeTasksNavSelection } from '@/components/tasks/tasks-nav-state'
 import {
   getCollapsedTaskGroupKeys,
@@ -296,6 +297,7 @@ import type {
   Repo,
   TaskProvider,
   TaskSavedView,
+  TaskSavedViewConfig,
   TaskSidebarFavorite,
   TasksNavSelection,
   TaskViewFilters,
@@ -5253,9 +5255,8 @@ export default function TaskPage(): React.JSX.Element {
     () => new Set(getLinearDisplayProperties().map((option) => option.id)),
     []
   )
-  const applyLinearSavedView = useCallback(
-    (view: TaskSavedView) => {
-      const config = view.config
+  const applyLinearViewConfig = useCallback(
+    (config: TaskSavedViewConfig) => {
       setLinearGroupBy(config.groupBy ?? 'status')
       setLinearOrderBy(config.orderBy ?? 'priority')
       setLinearViewMode(config.viewMode ?? 'list')
@@ -5270,14 +5271,23 @@ export default function TaskPage(): React.JSX.Element {
       }
       setLinearShowEmptyGroups(config.showEmptyGroups ?? false)
       setLinearViewFilters(config.filters ?? {})
-      const search = config.search ?? ''
-      setLinearSearchInput(search)
-      setAppliedLinearSearch(search)
+      // Why: last-used config resume leaves search alone — the linearQuery
+      // resume path owns it. Saved views carry search explicitly.
+      if (config.search !== undefined) {
+        setLinearSearchInput(config.search)
+        setAppliedLinearSearch(config.search)
+      }
+    },
+    [linearDisplayPropertyIds]
+  )
+  const applyLinearSavedView = useCallback(
+    (view: TaskSavedView) => {
+      applyLinearViewConfig({ ...view.config, search: view.config.search ?? '' })
       if (view.scope?.teamIds?.length) {
         setLinearTeamSelection(new Set(view.scope.teamIds))
       }
     },
-    [linearDisplayPropertyIds]
+    [applyLinearViewConfig]
   )
 
   const handleSelectTasksNav = useCallback(
@@ -5357,19 +5367,33 @@ export default function TaskPage(): React.JSX.Element {
     }
     tasksNavResumeAttemptedRef.current = true
     const resumeNav = taskResumeState?.tasksNav
-    if (!resumeNav) {
-      return
-    }
-    setTasksNav(resumeNav)
-    if (resumeNav.kind === 'my-issues') {
-      setLinearListFilter('assigned')
-    } else if (resumeNav.kind === 'saved-view') {
-      const view = getTaskSavedView(taskSavedViews, resumeNav.savedViewId)
-      if (view) {
-        applyLinearSavedView(view)
+    if (resumeNav) {
+      setTasksNav(resumeNav)
+      if (resumeNav.kind === 'my-issues') {
+        setLinearListFilter('assigned')
+      }
+      if (resumeNav.kind === 'saved-view') {
+        const view = getTaskSavedView(taskSavedViews, resumeNav.savedViewId)
+        if (view) {
+          applyLinearSavedView(view)
+          return
+        }
       }
     }
-  }, [applyLinearSavedView, taskResumeApplied, taskResumeState?.tasksNav, taskSavedViews])
+    // Why: grouping/ordering/display choices must survive leaving the page
+    // even without a saved view — restore the last-used configuration.
+    const resumeConfig = taskResumeState?.linearViewConfig
+    if (resumeConfig && Object.keys(resumeConfig).length > 0) {
+      applyLinearViewConfig(resumeConfig)
+    }
+  }, [
+    applyLinearSavedView,
+    applyLinearViewConfig,
+    taskResumeApplied,
+    taskResumeState?.linearViewConfig,
+    taskResumeState?.tasksNav,
+    taskSavedViews
+  ])
 
   const currentLinearViewConfig = useMemo(
     () => ({
@@ -5391,6 +5415,16 @@ export default function TaskPage(): React.JSX.Element {
       linearViewMode
     ]
   )
+  // Persist the current list configuration whenever it changes so reopening
+  // the page restores it. Search is excluded — linearQuery owns that field.
+  useEffect(() => {
+    if (!tasksNavResumeAttemptedRef.current) {
+      return
+    }
+    const { search: _search, ...persistableConfig } = currentLinearViewConfig
+    setTaskResumeState({ linearViewConfig: persistableConfig })
+  }, [currentLinearViewConfig, setTaskResumeState])
+
   const activeSavedView =
     tasksNav.kind === 'saved-view'
       ? getTaskSavedView(taskSavedViews, tasksNav.savedViewId)
@@ -11069,18 +11103,27 @@ export default function TaskPage(): React.JSX.Element {
                             )
                           }
                           return (
-                            <LinearIssueRow
+                            <LinearIssueContextMenu
                               key={row.issue.id}
                               issue={row.issue}
-                              selected={row.issue.id === selectedLinearIssueId}
-                              displayProperties={effectiveLinearDisplayProperties}
-                              showWorkspaceName={selectedLinearWorkspaceId === 'all'}
-                              onOpen={openLinearDetailPage}
+                              sourceContext={linearTaskSourceContext}
                               onStartWorkspace={handleUseLinearItem}
                               onOpenExternal={(issue) => {
                                 window.api.shell.openUrl(issue.url)
                               }}
-                            />
+                            >
+                              <LinearIssueRow
+                                issue={row.issue}
+                                selected={row.issue.id === selectedLinearIssueId}
+                                displayProperties={effectiveLinearDisplayProperties}
+                                showWorkspaceName={selectedLinearWorkspaceId === 'all'}
+                                onOpen={openLinearDetailPage}
+                                onStartWorkspace={handleUseLinearItem}
+                                onOpenExternal={(issue) => {
+                                  window.api.shell.openUrl(issue.url)
+                                }}
+                              />
+                            </LinearIssueContextMenu>
                           )
                         })}
                       </div>
