@@ -26,6 +26,7 @@ import { AutoRenameFailedDialog } from './AutoRenameFailedDialog'
 import WorktreeCardAgents from './WorktreeCardAgents'
 // [FORK] Сворачиваемая обёртка секции агентов (панель агент-сессий).
 import SidebarWorktreeAgentsSection from './SidebarWorktreeAgentsSection'
+import { AGENT_PANEL_ENABLED } from '@/components/agent-panel/agent-panel-managed-tab'
 // [/FORK]
 import { useWorktreeAgentRows } from './useWorktreeAgentRows'
 import { WorktreeCardStatusSlot } from './WorktreeCardStatusSlot'
@@ -1067,7 +1068,11 @@ const WorktreeCard = React.memo(function WorktreeCard({
   const metaReview = showPR ? hoverReview : null
   const metaAutomationProvenance = showAutomation ? worktree.automationProvenance : null
   const metaComment = showComment ? hoverComment : null
-  const showInlineAgentList = cardProps.includes('inline-agents') && (newCardStyle || !compactCards)
+  // [FORK] Панель прячет агент-табы из таб-бара, так что сайдбарный список —
+  // единственная навигация по сессиям неактивных worktree. Не зависим от
+  // card-свойства 'inline-agents': компактный пресет карточек его сбрасывает.
+  const showInlineAgentList =
+    (AGENT_PANEL_ENABLED || cardProps.includes('inline-agents')) && (newCardStyle || !compactCards)
   const compactInlineAgentRows = useWorktreeAgentRows(
     worktree.id,
     showInlineAgentList && agentActivityDisplayMode === 'compact'

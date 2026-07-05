@@ -105,7 +105,7 @@ export function AgentSessionTabStrip({
     <div
       role="tablist"
       aria-label="Сессии агентов"
-      className="flex h-7 min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-1"
+      className="agent-session-tab-strip flex h-full min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-1"
     >
       {sessions.map((session) => {
         const isActive = session.key === activeSessionKey

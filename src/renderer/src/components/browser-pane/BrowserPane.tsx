@@ -2610,7 +2610,7 @@ function RemoteBrowserPagePane({
             <Button
               size="sm"
               variant="ghost"
-              className="h-6 shrink-0 gap-1.5 px-2 text-xs opacity-50"
+              className="h-6 shrink-0 gap-1.5 rounded-full px-2 text-xs opacity-50"
               aria-disabled="true"
               aria-label={translate(
                 'auto.components.browser.pane.BrowserPane.deb5293610',
@@ -5089,8 +5089,11 @@ function BrowserPagePane({
             size="sm"
             variant="ghost"
             className={cn(
-              'h-6 shrink-0 gap-1.5 px-2 text-xs',
-              annotateModeActive && 'bg-accent text-accent-foreground'
+              'h-6 shrink-0 gap-1.5 rounded-full px-2 text-xs',
+              // Активный режим — янтарная пилюля с обводкой (Cursor-парити,
+              // тот же warning-токен, что у Plan-пилюли композера).
+              annotateModeActive &&
+                'border border-warning/60 bg-warning/10 text-warning hover:bg-warning/15 hover:text-warning dark:hover:bg-warning/15'
             )}
             disabled={isBlankTab}
             onClick={() => {
@@ -5105,6 +5108,7 @@ function BrowserPagePane({
           >
             <SquareDashedMousePointer className="size-3.5" />
             {translate('components.browser.toolbar.design', 'Design')}
+            {annotateModeActive ? <X className="size-3" /> : null}
           </Button>
 
           {/* [FORK] No standalone Import button — cookie import lives in the "…"

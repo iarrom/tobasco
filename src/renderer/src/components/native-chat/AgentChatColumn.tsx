@@ -148,13 +148,22 @@ export function AgentChatColumn(): React.JSX.Element {
       )
     : null
 
-  // Панельная сессия не должна держать tab.viewMode==='chat': TerminalPane
+  // Панельная сессия не должна держать viewMode==='chat': TerminalPane
   // отрисовал бы собственный чат-оверлей поверх портированного терминала.
+  // viewMode живёт на unified-табе (его и читает TerminalPane), не на
+  // TerminalTab — проверять и сбрасывать нужно именно unified.
+  const targetUnifiedTab = useAppStore((s) =>
+    activeWorktreeId && target
+      ? ((s.unifiedTabsByWorktree[activeWorktreeId] ?? []).find(
+          (tab) => tab.contentType === 'terminal' && tab.entityId === target.tabId
+        ) ?? null)
+      : null
+  )
   useEffect(() => {
-    if (targetTab && isAgentPanelManagedTab(targetTab) && targetTab.viewMode === 'chat') {
-      useAppStore.getState().setTabViewMode(targetTab.id, 'terminal')
+    if (targetTab && isAgentPanelManagedTab(targetTab) && targetUnifiedTab?.viewMode === 'chat') {
+      useAppStore.getState().setTabViewMode(targetUnifiedTab.id, 'terminal')
     }
-  }, [targetTab, targetTab?.viewMode])
+  }, [targetTab, targetUnifiedTab])
 
   // Публикуем хост панельного терминала: TerminalPaneOverlayLayer портирует
   // TerminalPane выбранной сессии в тело панели (см. agent-panel-state).
@@ -185,7 +194,11 @@ export function AgentChatColumn(): React.JSX.Element {
 
   return (
     <div className="relative flex h-full w-full min-h-0 flex-col">
-      <div className="flex h-7 shrink-0 items-center gap-1 pr-1.5">
+      {/* 4px drag strip + 32px row = 36px top band, so bg-card and border-b
+          line up with the center column's tab chrome (TabGroupSplitLayout)
+          and the sidebar's titlebar-left seam. */}
+      <div className="h-[4px] shrink-0 bg-card" data-terminal-focus-release-surface="true" />
+      <div className="flex h-8 shrink-0 items-center gap-1 border-b border-border bg-card pr-1.5">
         {activeWorktreeId && sessions.length > 0 ? (
           <AgentSessionTabStrip
             worktreeId={activeWorktreeId}
