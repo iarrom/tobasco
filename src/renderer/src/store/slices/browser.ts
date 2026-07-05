@@ -65,6 +65,9 @@ type CreateBrowserTabOptions = {
   // stays on the webview. When omitted, we fall back to the blank-URL check.
   focusAddressBar?: boolean
   browserRuntimeEnvironmentId?: string | null
+  // [FORK] "Open in new tab" from the bookmarks bar places the new tab right
+  // after the originating tab instead of at the end of the tab bar.
+  insertAfterTabId?: string
 }
 
 type CreateBrowserPageOptions = {
@@ -527,7 +530,15 @@ export const createBrowserSlice: StateCreator<AppState, [], [], BrowserSlice> = 
             inBase.add(entryId)
           }
         }
-        base.push(workspaceId)
+        // [FORK] Adjacent placement for bookmark "Open in new tab".
+        const insertAfterIndex = options?.insertAfterTabId
+          ? base.indexOf(options.insertAfterTabId)
+          : -1
+        if (insertAfterIndex >= 0) {
+          base.splice(insertAfterIndex + 1, 0, workspaceId)
+        } else {
+          base.push(workspaceId)
+        }
         return base
       })()
 

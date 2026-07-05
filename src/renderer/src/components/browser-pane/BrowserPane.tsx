@@ -2633,7 +2633,18 @@ function RemoteBrowserPagePane({
         </Tooltip>
       </div>
       {/* [FORK] Bookmarks bar parity for the remote pane. */}
-      {bookmarksBarVisible ? <BrowserBookmarksBar onNavigate={navigateToUrl} /> : null}
+      {bookmarksBarVisible ? (
+        <BrowserBookmarksBar
+          onNavigate={navigateToUrl}
+          onOpenInNewTab={(bookmark) =>
+            createBrowserTab(worktreeId, bookmark.url, {
+              title: bookmark.title,
+              browserRuntimeEnvironmentId: runtimeEnvironmentId,
+              insertAfterTabId: browserTab.workspaceId
+            })
+          }
+        />
+      ) : null}
       <div
         ref={remoteViewportRef}
         tabIndex={-1}
@@ -5156,7 +5167,17 @@ function BrowserPagePane({
           />
         </div>
         {/* [FORK] Bookmarks bar (reference row 3); hidden via the reading-list toggle. */}
-        {bookmarksBarVisible ? <BrowserBookmarksBar onNavigate={navigateToUrl} /> : null}
+        {bookmarksBarVisible ? (
+          <BrowserBookmarksBar
+            onNavigate={navigateToUrl}
+            onOpenInNewTab={(bookmark) =>
+              createBrowserTab(worktreeId, bookmark.url, {
+                title: bookmark.title,
+                insertAfterTabId: workspaceId
+              })
+            }
+          />
+        ) : null}
         {visibleDownloads.length > 0 ? (
           <div className="border-b border-border/60 bg-background px-3 py-1.5">
             <div className="scrollbar-sleek flex max-h-36 flex-col gap-1 overflow-y-auto">

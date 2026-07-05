@@ -12588,7 +12588,8 @@
         "open": "열기",
         "openExternal": "기본 브라우저에서 열기",
         "rename": "이름 바꾸기",
-        "remove": "제거"
+        "remove": "제거",
+        "openNewTab": "Open in new tab"
       }
     },
     "tab-bar": {

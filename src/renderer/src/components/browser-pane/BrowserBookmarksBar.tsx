@@ -17,6 +17,9 @@ import {
 
 type BrowserBookmarksBarProps = {
   onNavigate: (url: string) => void
+  /** [FORK] Opens the bookmark in a new in-app browser tab placed next to the
+   *  current one. Also bound to middle-click on the chip. */
+  onOpenInNewTab?: (bookmark: { url: string; title: string }) => void
 }
 
 function BookmarkFavicon({ faviconUrl }: { faviconUrl: string | null }): React.JSX.Element {
@@ -66,7 +69,8 @@ function RenameBookmarkInput({
 }
 
 export function BrowserBookmarksBar({
-  onNavigate
+  onNavigate,
+  onOpenInNewTab
 }: BrowserBookmarksBarProps): React.JSX.Element | null {
   const bookmarks = useAppStore((s) => s.bookmarks)
   const removeBookmark = useAppStore((s) => s.removeBookmark)
@@ -121,6 +125,14 @@ export function BrowserBookmarksBar({
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={() => moveBookmark(bookmark.id)}
                 onClick={() => onNavigate(bookmark.url)}
+                onAuxClick={(event) => {
+                  // Why: middle-click opens in a new adjacent tab, matching
+                  // browser convention.
+                  if (event.button === 1 && onOpenInNewTab) {
+                    event.preventDefault()
+                    onOpenInNewTab(bookmark)
+                  }
+                }}
                 title={bookmark.url}
                 className={cn(
                   'group flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground',
@@ -135,6 +147,11 @@ export function BrowserBookmarksBar({
               <ContextMenuItem onSelect={() => onNavigate(bookmark.url)}>
                 {translate('components.browser.bookmarks.open', 'Open')}
               </ContextMenuItem>
+              {onOpenInNewTab ? (
+                <ContextMenuItem onSelect={() => onOpenInNewTab(bookmark)}>
+                  {translate('components.browser.bookmarks.openNewTab', 'Open in new tab')}
+                </ContextMenuItem>
+              ) : null}
               <ContextMenuItem onSelect={() => void window.api.shell.openUrl(bookmark.url)}>
                 {translate('components.browser.bookmarks.openExternal', 'Open in default browser')}
               </ContextMenuItem>

@@ -12588,7 +12588,8 @@
         "open": "開く",
         "openExternal": "既定のブラウザーで開く",
         "rename": "名前を変更",
-        "remove": "削除"
+        "remove": "削除",
+        "openNewTab": "Open in new tab"
       }
     },
     "tab-bar": {

@@ -12588,7 +12588,8 @@
         "open": "Abrir",
         "openExternal": "Abrir en el navegador predeterminado",
         "rename": "Renombrar",
-        "remove": "Eliminar"
+        "remove": "Eliminar",
+        "openNewTab": "Open in new tab"
       }
     },
     "tab-bar": {

@@ -12588,7 +12588,8 @@
         "open": "打开",
         "openExternal": "在默认浏览器中打开",
         "rename": "重命名",
-        "remove": "移除"
+        "remove": "移除",
+        "openNewTab": "Open in new tab"
       }
     },
     "tab-bar": {
