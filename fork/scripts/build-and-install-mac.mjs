@@ -8,10 +8,10 @@
 //
 // Флаги:
 //   --relaunch   закрыть текущий инстанс форка и открыть свежесобранный
-//   --name=X     имя приложения в /Applications (по умолчанию «Orca Fork»)
+//   --name=X     имя приложения в /Applications (по умолчанию — productName сборки)
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, rmSync } from 'node:fs'
+import { existsSync, readdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 
 const repoRoot = path.resolve(import.meta.dirname, '../..')
@@ -24,15 +24,23 @@ if (process.platform !== 'darwin') {
 const args = process.argv.slice(2)
 const relaunch = args.includes('--relaunch')
 const nameArg = args.find((a) => a.startsWith('--name='))
-const appName = nameArg ? nameArg.slice('--name='.length) : 'Orca Fork'
 
 // Собираем под архитектуру текущей машины (arm64 на Apple Silicon, иначе x64).
 const arch = process.arch === 'arm64' ? 'arm64' : 'x64'
 const builderArchFlag = arch === 'arm64' ? '--arm64' : '--x64'
 // electron-builder кладёт unpacked .app в mac-<arch> (arm64) либо mac (x64).
 const builtAppDir = arch === 'arm64' ? 'mac-arm64' : 'mac'
-const builtApp = path.join(repoRoot, 'dist', builtAppDir, 'Orca.app')
-const installedApp = path.join('/Applications', `${appName}.app`)
+const builtDir = path.join(repoRoot, 'dist', builtAppDir)
+
+// Имя .app берём из результата сборки, а не хардкодим: productName форка
+// уже менялся (Orca → Pumpkin), и жёсткий путь ломал установку.
+function findBuiltApp() {
+  if (!existsSync(builtDir)) {
+    return null
+  }
+  const bundle = readdirSync(builtDir).find((entry) => entry.endsWith('.app'))
+  return bundle ? path.join(builtDir, bundle) : null
+}
 
 function run(cmd, cmdArgs) {
   console.log(`\n▶ ${cmd} ${cmdArgs.join(' ')}`)
@@ -55,10 +63,13 @@ run('pnpm', [
   '--dir'
 ])
 
-if (!existsSync(builtApp)) {
-  console.error(`\n✖ Не нашёл собранный .app: ${builtApp}`)
+const builtApp = findBuiltApp()
+if (!builtApp) {
+  console.error(`\n✖ Не нашёл собранный .app в ${builtDir}`)
   process.exit(1)
 }
+const appName = nameArg ? nameArg.slice('--name='.length) : path.basename(builtApp, '.app')
+const installedApp = path.join('/Applications', `${appName}.app`)
 
 // 3. Если просили перезапуск — закрыть текущий инстанс форка перед заменой,
 //    чтобы не остался работать старый бинарник.
