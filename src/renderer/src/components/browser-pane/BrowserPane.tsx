@@ -32,14 +32,17 @@ import {
   FolderOpen,
   Globe,
   Image,
+  List,
   Loader2,
   MessageCircleQuestionMark,
   MessageSquarePlus,
   OctagonX,
   PencilLine,
-  RefreshCw,
+  RotateCw,
   Send,
   SquareCode,
+  SquareDashedMousePointer,
+  Star,
   Trash2,
   X
 } from 'lucide-react'
@@ -117,8 +120,9 @@ import { formatBrowserAnnotationsAsMarkdown } from './browser-annotation-output'
 import { isEditableKeyboardTarget } from './browser-keyboard'
 import { getBrowserPagesForWorkspace } from './browser-pane-page-selection'
 import BrowserAddressBar from './BrowserAddressBar'
-import { BrowserImportHintButton } from './BrowserImportHintButton'
 import { BrowserToolbarMenu } from './BrowserToolbarMenu'
+import { BrowserBookmarksBar } from './BrowserBookmarksBar'
+import { isUrlBookmarked } from '../../../../shared/bookmarks'
 import BrowserFind from './BrowserFind'
 import { BrowserMobileDriverOverlay } from './BrowserMobileDriverOverlay'
 import { getShortcutPlatform, useShortcutLabel } from '@/hooks/useShortcutLabel'
@@ -948,11 +952,20 @@ function RemoteBrowserPagePane({
   const closeBrowserPage = useAppStore((s) => s.closeBrowserPage)
   const closeBrowserTab = useAppStore((s) => s.closeBrowserTab)
   const keybindings = useAppStore((state) => state.keybindings)
+  // [FORK] Bookmarks parity for the remote/streamed pane.
+  const bookmarks = useAppStore((state) => state.bookmarks)
+  const addBookmark = useAppStore((state) => state.addBookmark)
+  const removeBookmarkByUrl = useAppStore((state) => state.removeBookmarkByUrl)
+  const bookmarksBarVisible = useAppStore((state) => state.bookmarksBarVisible)
+  const toggleBookmarksBar = useAppStore((state) => state.toggleBookmarksBar)
 
   currentBrowserTabIdRef.current = browserTab.id
   currentBrowserTabUrlRef.current = browserTab.url
   activeRuntimeEnvironmentIdRef.current = activeRuntimeEnvironmentId
   isActiveRef.current = isActive
+  const isRemoteBlankTab =
+    browserTab.url === 'about:blank' || browserTab.url === ORCA_BROWSER_BLANK_URL
+  const isCurrentBookmarked = !isRemoteBlankTab && isUrlBookmarked(bookmarks, browserTab.url)
 
   const runtimeTarget = useCallback(() => {
     return activeRuntimeEnvironmentId
@@ -2508,13 +2521,27 @@ function RemoteBrowserPagePane({
           )
         : null}
       <div
-        className="relative z-10 flex items-center gap-2 border-b border-border/70 bg-background/95 px-3 py-1.5"
+        className="relative z-10 flex items-center gap-1.5 border-b border-border/70 bg-background/95 px-2 py-1"
         data-contextual-tour-target="browser-toolbar"
       >
+        {/* [FORK] Reading-list button toggles the bookmarks bar (reference row 3). */}
         <Button
           size="icon"
           variant="ghost"
-          className="h-7 w-7"
+          className="h-6 w-6"
+          onClick={toggleBookmarksBar}
+          aria-label={translate(
+            'components.browser.toolbar.toggleBookmarks',
+            'Toggle bookmarks bar'
+          )}
+          title={translate('components.browser.toolbar.toggleBookmarks', 'Toggle bookmarks bar')}
+        >
+          <List className="size-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6"
           onClick={() => void runRemoteNavigation('browser.back')}
         >
           <ArrowLeft className="size-4" />
@@ -2522,7 +2549,7 @@ function RemoteBrowserPagePane({
         <Button
           size="icon"
           variant="ghost"
-          className="h-7 w-7"
+          className="h-6 w-6"
           onClick={() => void runRemoteNavigation('browser.forward')}
         >
           <ArrowRight className="size-4" />
@@ -2530,14 +2557,44 @@ function RemoteBrowserPagePane({
         <Button
           size="icon"
           variant="ghost"
-          className="h-7 w-7"
+          className="h-6 w-6"
           onClick={() => void runRemoteNavigation('browser.reload')}
         >
           {busy || browserTab.loading ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
-            <RefreshCw className="size-4" />
+            <RotateCw className="size-4" />
           )}
+        </Button>
+        {/* [FORK] Star toggles the current page as a bookmark (reference row 2). */}
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6"
+          onClick={() => {
+            if (isCurrentBookmarked) {
+              removeBookmarkByUrl(browserTab.url)
+            } else {
+              addBookmark({
+                url: browserTab.url,
+                title: browserTab.title,
+                faviconUrl: browserTab.faviconUrl
+              })
+            }
+          }}
+          disabled={isRemoteBlankTab}
+          aria-label={
+            isCurrentBookmarked
+              ? translate('components.browser.toolbar.removeBookmark', 'Remove bookmark')
+              : translate('components.browser.toolbar.addBookmark', 'Add bookmark')
+          }
+          title={
+            isCurrentBookmarked
+              ? translate('components.browser.toolbar.removeBookmark', 'Remove bookmark')
+              : translate('components.browser.toolbar.addBookmark', 'Add bookmark')
+          }
+        >
+          <Star className={cn('size-4', isCurrentBookmarked && 'fill-current text-warning')} />
         </Button>
         <BrowserAddressBar
           value={addressBarValue}
@@ -2546,12 +2603,14 @@ function RemoteBrowserPagePane({
           onNavigate={navigateToUrl}
           inputRef={addressBarInputRef}
         />
+        {/* [FORK] Cursor-parity "Design" chip; disabled here because annotations
+            only work in local browser tabs. */}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              size="icon"
+              size="sm"
               variant="ghost"
-              className="h-7 w-7 opacity-50"
+              className="h-6 shrink-0 gap-1.5 px-2 text-xs opacity-50"
               aria-disabled="true"
               aria-label={translate(
                 'auto.components.browser.pane.BrowserPane.deb5293610',
@@ -2561,7 +2620,8 @@ function RemoteBrowserPagePane({
                 event.preventDefault()
               }}
             >
-              <MessageSquarePlus className="size-4" />
+              <SquareDashedMousePointer className="size-3.5" />
+              {translate('components.browser.toolbar.design', 'Design')}
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom" sideOffset={4}>
@@ -2572,6 +2632,8 @@ function RemoteBrowserPagePane({
           </TooltipContent>
         </Tooltip>
       </div>
+      {/* [FORK] Bookmarks bar parity for the remote pane. */}
+      {bookmarksBarVisible ? <BrowserBookmarksBar onNavigate={navigateToUrl} /> : null}
       <div
         ref={remoteViewportRef}
         tabIndex={-1}
@@ -2723,6 +2785,12 @@ function BrowserPagePane({
   )
   const setBrowserDefaultZoomLevel = useAppStore((state) => state.setBrowserDefaultZoomLevel)
   const normalizedBrowserDefaultZoomLevel = normalizeBrowserPageZoomLevel(browserDefaultZoomLevel)
+  // [FORK] Bookmarks bar + toolbar star toggle state (global bookmarks).
+  const bookmarks = useAppStore((state) => state.bookmarks)
+  const addBookmark = useAppStore((state) => state.addBookmark)
+  const removeBookmarkByUrl = useAppStore((state) => state.removeBookmarkByUrl)
+  const bookmarksBarVisible = useAppStore((state) => state.bookmarksBarVisible)
+  const toggleBookmarksBar = useAppStore((state) => state.toggleBookmarksBar)
   const browserDefaultZoomPercent = browserPageZoomLevelToPercent(normalizedBrowserDefaultZoomLevel)
   const browserDefaultZoomLevelRef = useRef(normalizedBrowserDefaultZoomLevel)
   browserDefaultZoomLevelRef.current = normalizedBrowserDefaultZoomLevel
@@ -4121,6 +4189,11 @@ function BrowserPagePane({
     [grab, grabIntent, recordFeatureInteraction]
   )
 
+  // [FORK] The Design toolbar button doubles as the mode indicator/exit since
+  // annotate mode shows no hint banner.
+  const annotateModeActive =
+    grab.state !== 'idle' && grab.state !== 'error' && grabIntent === 'annotate'
+
   // CmdOrCtrl+C toggles grab mode
   // Why: Cmd+C is deliberately repurposed inside the browser pane so that the
   // most natural "copy" gesture enters grab mode, letting the user visually
@@ -4597,6 +4670,8 @@ function BrowserPagePane({
   // with the safe data: URL, handleDidStopLoading writes the resolved URL back.
   // Match both so the "New Browser Tab" overlay stays visible for blank tabs.
   const isBlankTab = browserTab.url === 'about:blank' || browserTab.url === ORCA_BROWSER_BLANK_URL
+  // [FORK] Star reflects whether the current page is bookmarked.
+  const isCurrentBookmarked = !isBlankTab && isUrlBookmarked(bookmarks, browserTab.url)
   const externalUrl = getOpenableExternalUrl(webviewRef.current, browserTab.url)
   const currentBrowserUrl = getCurrentBrowserUrl(webviewRef.current, browserTab.url)
   const loadErrorMeta = getLoadErrorMetadata(browserTab.loadError)
@@ -4897,13 +4972,27 @@ function BrowserPagePane({
 
       <div ref={chromeHeaderRef} className="pointer-events-auto shrink-0">
         <div
-          className="relative z-10 flex items-center gap-2 border-b border-border/70 bg-background/95 px-3 py-1.5"
+          className="relative z-10 flex items-center gap-1.5 border-b border-border/70 bg-background/95 px-2 py-1"
           data-contextual-tour-target="browser-toolbar"
         >
+          {/* [FORK] Reading-list button toggles the bookmarks bar (reference row 3). */}
           <Button
             size="icon"
             variant="ghost"
-            className="h-7 w-7"
+            className="h-6 w-6"
+            onClick={toggleBookmarksBar}
+            aria-label={translate(
+              'components.browser.toolbar.toggleBookmarks',
+              'Toggle bookmarks bar'
+            )}
+            title={translate('components.browser.toolbar.toggleBookmarks', 'Toggle bookmarks bar')}
+          >
+            <List className="size-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6"
             onClick={() => webviewRef.current?.goBack()}
             disabled={!browserTab.canGoBack}
           >
@@ -4912,7 +5001,7 @@ function BrowserPagePane({
           <Button
             size="icon"
             variant="ghost"
-            className="h-7 w-7"
+            className="h-6 w-6"
             onClick={() => webviewRef.current?.goForward()}
             disabled={!browserTab.canGoForward}
           >
@@ -4921,7 +5010,7 @@ function BrowserPagePane({
           <Button
             size="icon"
             variant="ghost"
-            className="h-7 w-7"
+            className="h-6 w-6"
             onClick={() => {
               const webview = webviewRef.current
               if (!webview) {
@@ -4939,8 +5028,39 @@ function BrowserPagePane({
             {browserTab.loading ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
-              <RefreshCw className="size-4" />
+              <RotateCw className="size-4" />
             )}
+          </Button>
+
+          {/* [FORK] Star toggles the current page as a bookmark (reference row 2). */}
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6"
+            onClick={() => {
+              if (isCurrentBookmarked) {
+                removeBookmarkByUrl(browserTab.url)
+              } else {
+                addBookmark({
+                  url: browserTab.url,
+                  title: browserTab.title,
+                  faviconUrl: browserTab.faviconUrl
+                })
+              }
+            }}
+            disabled={isBlankTab}
+            aria-label={
+              isCurrentBookmarked
+                ? translate('components.browser.toolbar.removeBookmark', 'Remove bookmark')
+                : translate('components.browser.toolbar.addBookmark', 'Add bookmark')
+            }
+            title={
+              isCurrentBookmarked
+                ? translate('components.browser.toolbar.removeBookmark', 'Remove bookmark')
+                : translate('components.browser.toolbar.addBookmark', 'Add bookmark')
+            }
+          >
+            <Star className={cn('size-4', isCurrentBookmarked && 'fill-current text-warning')} />
           </Button>
 
           <BrowserAddressBar
@@ -4952,114 +5072,33 @@ function BrowserPagePane({
             dismissSuggestionsRef={dismissAddressBarSuggestionsRef}
           />
 
-          <BrowserImportHintButton profileId={sessionProfileId} />
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex">
-                <Button
-                  size="icon"
-                  variant={grab.state !== 'idle' && grabIntent === 'copy' ? 'default' : 'ghost'}
-                  className={cn(
-                    'h-8 w-8',
-                    grab.state !== 'idle' &&
-                      grabIntent === 'copy' &&
-                      'bg-foreground/80 text-background hover:bg-foreground/90'
-                  )}
-                  onClick={() => startGrabIntent('copy')}
-                  disabled={isBlankTab}
-                  aria-label={translate(
-                    'auto.components.browser.pane.BrowserPane.fdfc7fe0ef',
-                    'Grab page element'
-                  )}
-                  data-contextual-tour-target="browser-grab-control"
-                >
-                  <Crosshair className="size-4" />
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" sideOffset={4}>
-              {translate(
-                'auto.components.browser.pane.BrowserPane.acbe79fd01',
-                'Grab page element ({{value0}})',
-                { value0: grabElementShortcut }
-              )}
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              {/* Why: wrap the disabled button in a span so pointer events still
-                reach the tooltip trigger — Radix (and the DOM) drop hover
-                events on disabled <button>, which is why the previous native
-                `title` attribute fired inconsistently. */}
-              <span className="inline-flex">
-                <Button
-                  size="icon"
-                  variant={grab.state !== 'idle' && grabIntent === 'annotate' ? 'default' : 'ghost'}
-                  className={cn(
-                    'relative h-8 w-8',
-                    grab.state !== 'idle' &&
-                      grabIntent === 'annotate' &&
-                      'bg-foreground/80 text-background hover:bg-foreground/90'
-                  )}
-                  onClick={() => startGrabIntent('annotate')}
-                  disabled={isBlankTab}
-                  aria-label={translate(
-                    'auto.components.browser.pane.BrowserPane.fc9be38f6f',
-                    'Annotate page element'
-                  )}
-                  data-contextual-tour-target="browser-annotation-control"
-                >
-                  <MessageSquarePlus className="size-4" />
-                  {browserAnnotations.length > 0 ? (
-                    <span className="absolute -top-1 -right-1 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] leading-4 text-primary-foreground">
-                      {browserAnnotations.length}
-                    </span>
-                  ) : null}
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" sideOffset={4}>
-              {translate(
-                'auto.components.browser.pane.BrowserPane.fc9be38f6f',
-                'Annotate page element'
-              )}
-            </TooltipContent>
-          </Tooltip>
-
+          {/* [FORK] Cursor-parity "Design" button: annotate mode is the reference's
+              Design control, so it stays visible right of the address bar. */}
           <Button
-            size="icon"
+            size="sm"
             variant="ghost"
-            className="h-7 w-7"
-            onClick={() => void window.api.browser.openDevTools({ browserPageId: browserTab.id })}
-            title={translate(
-              'auto.components.browser.pane.BrowserPane.ec75d0c412',
-              'Open browser devtools'
+            className={cn(
+              'h-6 shrink-0 gap-1.5 px-2 text-xs',
+              annotateModeActive && 'bg-accent text-accent-foreground'
             )}
-          >
-            <SquareCode className="size-4" />
-          </Button>
-
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7"
+            disabled={isBlankTab}
             onClick={() => {
-              if (!externalUrl) {
+              if (annotateModeActive) {
+                setPendingAnnotationPayload(null)
+                grab.cancel()
                 return
               }
-              void window.api.shell.openUrl(externalUrl)
+              startGrabIntent('annotate')
             }}
-            title={translate(
-              'auto.components.browser.pane.BrowserPane.0f41bf80c7',
-              'Open in default browser'
-            )}
-            disabled={!externalUrl}
+            data-contextual-tour-target="browser-annotation-control"
           >
-            <ExternalLink className="size-4" />
+            <SquareDashedMousePointer className="size-3.5" />
+            {translate('components.browser.toolbar.design', 'Design')}
           </Button>
 
+          {/* [FORK] No standalone Import button — cookie import lives in the "…"
+              overflow (reference keeps only Design and the ellipsis right of the
+              address bar). */}
           <BrowserToolbarMenu
             currentProfileId={sessionProfileId}
             workspaceId={workspaceId}
@@ -5067,8 +5106,57 @@ function BrowserPagePane({
             viewportPresetId={browserTab.viewportPresetId ?? null}
             onDestroyWebview={() => destroyPersistentWebview(browserTab.id)}
             isActive={isActive}
+            pageActions={
+              <>
+                {/* [FORK] Reference-minimal toolbar: grab / devtools / open-external
+                    live in the "…" overflow; annotate is the toolbar Design button. */}
+                <DropdownMenuItem
+                  disabled={isBlankTab}
+                  onSelect={() => startGrabIntent('copy')}
+                  data-contextual-tour-target="browser-grab-control"
+                >
+                  <Crosshair className="mr-2 size-3.5" />
+                  <span className="flex-1">
+                    {translate(
+                      'auto.components.browser.pane.BrowserPane.fdfc7fe0ef',
+                      'Grab page element'
+                    )}
+                  </span>
+                  <span className="ml-auto pl-2 text-[11px] text-muted-foreground">
+                    {grabElementShortcut}
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() =>
+                    void window.api.browser.openDevTools({ browserPageId: browserTab.id })
+                  }
+                >
+                  <SquareCode className="mr-2 size-3.5" />
+                  {translate(
+                    'auto.components.browser.pane.BrowserPane.ec75d0c412',
+                    'Open browser devtools'
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!externalUrl}
+                  onSelect={() => {
+                    if (externalUrl) {
+                      void window.api.shell.openUrl(externalUrl)
+                    }
+                  }}
+                >
+                  <ExternalLink className="mr-2 size-3.5" />
+                  {translate(
+                    'auto.components.browser.pane.BrowserPane.0f41bf80c7',
+                    'Open in default browser'
+                  )}
+                </DropdownMenuItem>
+              </>
+            }
           />
         </div>
+        {/* [FORK] Bookmarks bar (reference row 3); hidden via the reading-list toggle. */}
+        {bookmarksBarVisible ? <BrowserBookmarksBar onNavigate={navigateToUrl} /> : null}
         {visibleDownloads.length > 0 ? (
           <div className="border-b border-border/60 bg-background px-3 py-1.5">
             <div className="scrollbar-sleek flex max-h-36 flex-col gap-1 overflow-y-auto">
@@ -5214,7 +5302,11 @@ function BrowserPagePane({
             </button>
           </div>
         ) : null}
-        {grab.state !== 'idle' ? (
+        {/* [FORK] Design/annotate mode shows no instructional hint banner — the
+            row appears only on errors or once annotations exist (Send/Copy live
+            there). The Design button itself indicates the active mode. */}
+        {grab.state !== 'idle' &&
+        (grab.state === 'error' || grabIntent !== 'annotate' || browserAnnotations.length > 0) ? (
           <div
             className={cn(
               'flex items-center gap-2 border-b border-border/60 px-3 py-1.5 text-xs text-foreground/90',
@@ -5246,16 +5338,11 @@ function BrowserPagePane({
                           '{{value0}} annotation ready. Select another element or copy all feedback.',
                           { value0: browserAnnotations.length }
                         )
-                      : browserAnnotations.length > 0
-                        ? translate(
-                            'auto.components.browser.pane.BrowserPane.a2164a6e5a',
-                            '{{value0}} annotations ready. Select another element or copy all feedback.',
-                            { value0: browserAnnotations.length }
-                          )
-                        : translate(
-                            'auto.components.browser.pane.BrowserPane.777b5bc4ec',
-                            'Click an element to add feedback for the agent.'
-                          )
+                      : translate(
+                          'auto.components.browser.pane.BrowserPane.a2164a6e5a',
+                          '{{value0}} annotations ready. Select another element or copy all feedback.',
+                          { value0: browserAnnotations.length }
+                        )
                   : grab.state === 'confirming'
                     ? translate(
                         'auto.components.browser.pane.BrowserPane.e852e20cea',
@@ -5420,7 +5507,7 @@ function BrowserPagePane({
                           retryBrowserTabLoad(webview, browserTab, onUpdatePageStateRef.current)
                         }}
                       >
-                        <RefreshCw className="size-4" />
+                        <RotateCw className="size-4" />
                         <span>
                           {translate(
                             'auto.components.browser.pane.BrowserPane.c6be71329e',

@@ -9,6 +9,10 @@ import { useNativeChatLiveSession } from './use-native-chat-live-session'
 import { selectNativeChatViewState } from './native-chat-view-state'
 import { NativeChatMessageList } from './NativeChatMessageList'
 import { NativeChatComposer, type NativeChatComposerHandle } from './NativeChatComposer'
+import { NATIVE_FILE_DROP_TARGET } from '../../../../shared/native-file-drop'
+import { useNativeChatFileDrag } from './use-native-chat-file-drag'
+import { NativeChatFileDropOverlay } from './NativeChatFileDropOverlay'
+import { nativeChatComposerTargetIsRemote } from './native-chat-composer-target'
 import { useNativeChatFontScale } from './use-native-chat-font-scale'
 import { useNativeChatCanSend } from './use-native-chat-can-send'
 import { NativeChatInteractiveCard } from './NativeChatInteractiveCard'
@@ -43,12 +47,11 @@ import {
 } from './native-chat-typing-redirect'
 import { useNativeChatContextMenu } from './use-native-chat-context-menu'
 import type { NativeChatContextMenuActions } from './use-native-chat-context-menu'
-import {
-  resolveNativeChatFileLink,
-  resolveNativeChatFileLinkContext
-} from './native-chat-file-link'
-import { openDetectedFilePath } from '@/components/terminal-pane/terminal-file-open-routing'
-import type { CommentMarkdownLinkClickHandler } from '@/components/sidebar/CommentMarkdown'
+import { resolveNativeChatFileLinkContext } from './native-chat-file-link'
+import { useNativeChatFileLinkClick } from './use-native-chat-file-link-click'
+import { useNativeChatPlan } from './use-native-chat-plan'
+import { NativeChatReviewPlanCard } from './NativeChatReviewPlanCard'
+import { NativeChatSubagentContext } from './native-chat-subagent-context'
 
 const emptyNativeChatContextMenuActions: Omit<NativeChatContextMenuActions, 'onPaste'> = {
   onSplitRight: () => {},
@@ -163,7 +166,17 @@ function NativeChatResolvedView({
   // The agent's in-progress reply preview (hook), shown as a live streaming
   // bubble while it works — before the completed turn flushes to the transcript.
   const hookPreview = useAppStore((s) => s.agentStatusByPaneKey[paneKey]?.lastAssistantMessage)
+  // [FORK] While a question/approval card is up, the send queue must not flush —
+  // a queued turn would land as the answer to the prompt.
+  const interactivePromptActive = useAppStore((s) =>
+    Boolean(s.agentStatusByPaneKey[paneKey]?.interactivePrompt)
+  )
   const canSend = useNativeChatCanSend(targetPtyId)
+  // [FORK] Drag-and-drop image overlay: only local sends can attach files, so
+  // gate the overlay to a live local pty (remote drops would fail with a notice).
+  const fileDrag = useNativeChatFileDrag(
+    canSend && targetPtyId !== null && !nativeChatComposerTargetIsRemote(targetPtyId)
+  )
   // Reuse the verified composer send path for interactive cards and composer
   // stop (Stop sends ESC, the agent-TUI interrupt key).
   const interactiveSend = useNativeChatInteractiveSend(terminalTabId, targetPtyId, agent)
@@ -343,110 +356,137 @@ function NativeChatResolvedView({
     interrupted: workingInterrupted
   })
 
+  // [FORK] Plan mode: persisted selection shared with the composer + the plan
+  // detected from the agent's `Plans/*.md` write, driving the status line, the
+  // Review Plan card, and the plan tab.
+  const plan = useNativeChatPlan({
+    agent,
+    terminalTabId,
+    targetPtyId,
+    messages: sessionWithPending.messages,
+    fileLinkContext,
+    isWorking
+  })
+
   const stopAgent = useCallback(() => {
     setWorkingInterrupted(true)
     interactiveSend.cancel()
   }, [interactiveSend])
-  const openNativeChatFileLink = useCallback<CommentMarkdownLinkClickHandler>(
-    (event, href) => {
-      const target = resolveNativeChatFileLink(href, fileLinkContext)
-      if (!target || !fileLinkContext) {
-        return
-      }
-      event.preventDefault()
-      event.stopPropagation()
-      openDetectedFilePath(target.absolutePath, target.line, target.column, {
-        worktreeId: fileLinkContext.worktreeId,
-        worktreePath: fileLinkContext.worktreePath,
-        runtimeEnvironmentId: fileLinkContext.runtimeEnvironmentId,
-        openWithSystemDefault: event.shiftKey
-      })
-    },
-    [fileLinkContext]
-  )
-  const nativeChatFileLinkClick = fileLinkContext ? openNativeChatFileLink : undefined
+  const nativeChatFileLinkClick = useNativeChatFileLinkClick(fileLinkContext)
 
   // Chat-only font zoom via Cmd/Ctrl +/-/0, gated to the live conversation so
   // the chord is inert on the loading/empty/error states and elsewhere.
   const fontScale = useNativeChatFontScale(isConversation)
 
+  // [FORK] Sub-agent steps resolve their side transcripts relative to this
+  // pane's transcript path (see native-chat-subagent-context).
+  const subagentContextValue = useMemo(
+    () => ({ agent, parentTranscriptPath: transcriptPath }),
+    [agent, transcriptPath]
+  )
+
   return (
-    <div
-      ref={rootRef}
-      data-native-chat-root="true"
-      tabIndex={-1}
-      onPointerDownCapture={(event) => {
-        if (event.button === 2) {
-          contextMenu.onSelectionCapture()
+    <NativeChatSubagentContext.Provider value={subagentContextValue}>
+      <div
+        ref={rootRef}
+        data-native-chat-root="true"
+        // [FORK] Whole-pane image drop: the marker routes any drop over the chat to
+        // the composer's onFileDrop handler; the overlay shows it's working.
+        data-native-file-drop-target={NATIVE_FILE_DROP_TARGET.composer}
+        onDragEnter={fileDrag.dragHandlers.onDragEnter}
+        onDragLeave={fileDrag.dragHandlers.onDragLeave}
+        tabIndex={-1}
+        onPointerDownCapture={(event) => {
+          if (event.button === 2) {
+            contextMenu.onSelectionCapture()
+            event.preventDefault()
+            event.stopPropagation()
+            return
+          }
+          if (event.button === 0 && shouldFocusNativeChatPaneFromPointerTarget(event.target)) {
+            rootRef.current?.focus({ preventScroll: true })
+          }
+        }}
+        onKeyDownCapture={(event) => {
+          // Backspace/Delete outside an input focuses the composer (like typing)
+          // but inserts nothing — let the now-focused field handle the keystroke.
+          if (shouldFocusNativeChatComposerFromEditingKey(event)) {
+            composerRef.current?.focus()
+            return
+          }
+          if (!shouldRedirectNativeChatTyping(event)) {
+            return
+          }
+          if (!composerRef.current?.insertTypedText(event.key)) {
+            return
+          }
           event.preventDefault()
           event.stopPropagation()
-          return
-        }
-        if (event.button === 0 && shouldFocusNativeChatPaneFromPointerTarget(event.target)) {
-          rootRef.current?.focus({ preventScroll: true })
-        }
-      }}
-      onKeyDownCapture={(event) => {
-        // Backspace/Delete outside an input focuses the composer (like typing)
-        // but inserts nothing — let the now-focused field handle the keystroke.
-        if (shouldFocusNativeChatComposerFromEditingKey(event)) {
-          composerRef.current?.focus()
-          return
-        }
-        if (!shouldRedirectNativeChatTyping(event)) {
-          return
-        }
-        if (!composerRef.current?.insertTypedText(event.key)) {
-          return
-        }
-        event.preventDefault()
-        event.stopPropagation()
-      }}
-      onMouseUpCapture={contextMenu.onSelectionCapture}
-      onKeyUpCapture={contextMenu.onSelectionCapture}
-      onContextMenuCapture={contextMenu.onContextMenuCapture}
-      className="flex h-full min-h-0 w-full flex-col bg-background focus:outline-none"
-    >
-      <div className="flex min-h-0 flex-1 flex-col">
-        {viewState.kind === 'loading' ? (
-          <NativeChatEmptyState kind="loading" />
-        ) : viewState.kind === 'error' ? (
-          <NativeChatEmptyState kind="error" message={viewState.message} />
-        ) : viewState.kind ===
-          'empty' ? // [FORK] Пустой чат: убрали заглушку «Start a chat…», композер
-        // центрируется по вертикали нижним flex-1 спейсером — как в Cursor.
-        null : (
-          <NativeChatMessageList
-            session={sessionWithPending}
-            isWorking={isWorking}
-            expandSignal={false}
-            fontScale={fontScale.scale}
-            onLinkClick={nativeChatFileLinkClick}
-            allowFileUriLinks={fileLinkContext !== null}
-          />
-        )}
-      </div>
-      {/* Live interactive cards (question / approval) render just above the
+        }}
+        onMouseUpCapture={contextMenu.onSelectionCapture}
+        onKeyUpCapture={contextMenu.onSelectionCapture}
+        onContextMenuCapture={contextMenu.onContextMenuCapture}
+        className="relative flex h-full min-h-0 w-full flex-col bg-background focus:outline-none"
+      >
+        {fileDrag.isFileDragOver ? <NativeChatFileDropOverlay /> : null}
+        <div className="flex min-h-0 flex-1 flex-col">
+          {viewState.kind === 'loading' ? (
+            <NativeChatEmptyState kind="loading" />
+          ) : viewState.kind === 'error' ? (
+            <NativeChatEmptyState kind="error" message={viewState.message} />
+          ) : viewState.kind === 'empty' ? null : ( // центрируется по вертикали нижним flex-1 спейсером — как в Cursor. // [FORK] Пустой чат: убрали заглушку «Start a chat…», композер
+            <NativeChatMessageList
+              session={sessionWithPending}
+              isWorking={isWorking}
+              fontScale={fontScale.scale}
+              onLinkClick={nativeChatFileLinkClick}
+              allowFileUriLinks={fileLinkContext !== null}
+              planStatus={plan.planStatus}
+              onOpenPlan={plan.openPlan}
+            />
+          )}
+        </div>
+        {/* Live interactive cards (question / approval) render just above the
           composer while the agent's interactivePrompt is present (mobile parity). */}
-      <NativeChatInteractiveCard paneKey={paneKey} send={interactiveSend} canSend={canSend} />
-      {/* canSend reflects the mobile presence-lock: when a mobile client holds
+        <NativeChatInteractiveCard paneKey={paneKey} send={interactiveSend} canSend={canSend} />
+        {/* [FORK] Cursor-style Review Plan card: appears once Plan mode writes a
+          plan; opens the full plan (right split) and Builds it. */}
+        {plan.showPlanCard && plan.plan ? (
+          <NativeChatReviewPlanCard
+            title={plan.plan.title}
+            preview={plan.plan.preview}
+            buildModelAlias={plan.modelSelection.selection.model}
+            onSelectBuildModel={plan.selectBuildModel}
+            onOpen={plan.openPlan}
+            onBuild={plan.buildPlan}
+            onDismiss={plan.dismissPlan}
+          />
+        ) : null}
+        {/* canSend reflects the mobile presence-lock: when a mobile client holds
           the pty, the composer shows its guarded state instead of racing the
           mobile driver (R8). */}
-      <NativeChatComposer
-        ref={composerRef}
-        terminalTabId={terminalTabId}
-        targetPtyId={targetPtyId}
-        agent={agent}
-        canSend={canSend}
-        isWorking={isWorking}
-        onStop={stopAgent}
-        onOptimisticSend={onOptimisticSend}
-        onSlashCommand={onSlashCommand}
-      />
-      {/* [FORK] Нижний спейсер: в пустом чате балансирует верхний flex-1,
+        {/* [FORK] Scale the composer with the same chat zoom (Cmd/Ctrl +/-/0) so the
+          input font stays in step with the transcript text. */}
+        <div style={{ zoom: fontScale.scale } as React.CSSProperties}>
+          <NativeChatComposer
+            ref={composerRef}
+            terminalTabId={terminalTabId}
+            targetPtyId={targetPtyId}
+            agent={agent}
+            canSend={canSend}
+            isWorking={isWorking}
+            onStop={stopAgent}
+            onOptimisticSend={onOptimisticSend}
+            onSlashCommand={onSlashCommand}
+            modelSelection={plan.modelSelection}
+            queuePaused={interactivePromptActive}
+          />
+        </div>
+        {/* [FORK] Нижний спейсер: в пустом чате балансирует верхний flex-1,
           выставляя композер по центру пейна (как в Cursor). */}
-      {viewState.kind === 'empty' ? <div className="flex-1" /> : null}
-      {contextMenu.menu}
-    </div>
+        {viewState.kind === 'empty' ? <div className="flex-1" /> : null}
+        {contextMenu.menu}
+      </div>
+    </NativeChatSubagentContext.Provider>
   )
 }

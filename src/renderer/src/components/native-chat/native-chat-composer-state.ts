@@ -69,6 +69,74 @@ export function deriveComposerAutocomplete(
   return { mode: 'none' }
 }
 
+// ─── [FORK] Universal slash menu (Cursor parity) ────────────────────────────
+// Typing `/` opens one sectioned menu — Skills, Commands, Modes — instead of
+// the bare command list. Pure builders here; the composer owns the wiring.
+
+export type NativeChatComposerMode = {
+  id: 'plan'
+  label: string
+  description?: string
+  active: boolean
+}
+
+export type UniversalSlashItem =
+  | { kind: 'skill'; skill: DiscoveredSkill }
+  | { kind: 'command'; command: SlashCommandSuggestion }
+  | { kind: 'mode'; mode: NativeChatComposerMode }
+
+const UNIVERSAL_SLASH_SKILL_CAP = 5
+const UNIVERSAL_SLASH_COMMAND_CAP = 8
+
+/** Flat, keyboard-navigable item list for the universal `/` menu, ordered the
+ *  way the sections render: Skills, Commands, Modes. */
+export function buildUniversalSlashItems(params: {
+  query: string
+  commands: readonly SlashCommandSuggestion[]
+  skills: readonly DiscoveredSkill[]
+  modes: readonly NativeChatComposerMode[]
+}): UniversalSlashItem[] {
+  const normalized = params.query.toLowerCase()
+  const skills = filterSkillSuggestions(params.skills, params.query).slice(
+    0,
+    UNIVERSAL_SLASH_SKILL_CAP
+  )
+  const commands = filterSlashCommands(params.commands, params.query).slice(
+    0,
+    UNIVERSAL_SLASH_COMMAND_CAP
+  )
+  const modes = params.modes.filter(
+    (mode) =>
+      normalized === '' ||
+      mode.id.startsWith(normalized) ||
+      mode.label.toLowerCase().startsWith(normalized)
+  )
+  return [
+    ...skills.map((skill) => ({ kind: 'skill' as const, skill })),
+    ...commands.map((command) => ({ kind: 'command' as const, command })),
+    ...modes.map((mode) => ({ kind: 'mode' as const, mode }))
+  ]
+}
+
+/** Replace the leading `/query` token (slash mode ⇒ everything before the
+ *  caret) with the skill's `$name ` reference. */
+export function applySlashSkillSuggestion(
+  draft: string,
+  caret: number,
+  skillName: string
+): { draft: string; caret: number } {
+  const insertion = `$${skillName} `
+  return { draft: insertion + draft.slice(caret), caret: insertion.length }
+}
+
+/** Drop the leading `/query` token (e.g. after a mode toggle consumed it). */
+export function stripLeadingSlashToken(
+  draft: string,
+  caret: number
+): { draft: string; caret: number } {
+  return { draft: draft.slice(caret).replace(/^\s+/, ''), caret: 0 }
+}
+
 export function filterSkillSuggestions(
   skills: readonly DiscoveredSkill[],
   query: string

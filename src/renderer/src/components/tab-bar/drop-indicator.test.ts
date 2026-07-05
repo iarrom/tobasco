@@ -42,45 +42,35 @@ describe('getDropIndicatorClasses', () => {
   })
 })
 
+// [FORK] Cursor-style text chips: no bottom selection bar, no per-tab borders;
+// active reads via a rounded pill wash.
 describe('ACTIVE_TAB_INDICATOR_CLASSES', () => {
-  it('renders a neutral 2px bottom-edge marker without shifting layout', () => {
-    expect(ACTIVE_TAB_INDICATOR_CLASSES).toContain('absolute')
-    expect(ACTIVE_TAB_INDICATOR_CLASSES).toContain('bottom-0')
-    expect(ACTIVE_TAB_INDICATOR_CLASSES).toContain('h-[2px]')
-    expect(ACTIVE_TAB_INDICATOR_CLASSES).toContain(
-      'bg-[color-mix(in_srgb,var(--foreground)_60%,var(--card))]'
-    )
-    expect(ACTIVE_TAB_INDICATOR_CLASSES).toContain('pointer-events-none')
-    expect(ACTIVE_TAB_INDICATOR_CLASSES).not.toContain('-top-px')
-    expect(ACTIVE_TAB_INDICATOR_CLASSES).not.toContain('bg-[#1e3d9c]')
+  it('is hidden — the pill background is the selection marker', () => {
+    expect(ACTIVE_TAB_INDICATOR_CLASSES).toBe('hidden')
   })
 })
 
 describe('getTabStripBorderClasses', () => {
-  it('includes top and right borders by default', () => {
-    expect(getTabStripBorderClasses(true)).toBe('border-t border-r border-border')
-    expect(getTabStripBorderClasses(false)).toBe('border-t border-border')
-  })
-
-  it('can omit the top border for rounded floating panel titlebars', () => {
-    expect(getTabStripBorderClasses(true, { includeTopBorder: false })).toBe(
-      'border-r border-border'
-    )
-    expect(getTabStripBorderClasses(false, { includeTopBorder: false })).toBe('border-border')
+  it('draws no separators between chip tabs', () => {
+    expect(getTabStripBorderClasses(true)).toBe('')
+    expect(getTabStripBorderClasses(false)).toBe('')
+    expect(getTabStripBorderClasses(true, { includeTopBorder: false })).toBe('')
   })
 })
 
 describe('getTabRootStateClasses', () => {
   it('returns the shared selected-tab surface treatment', () => {
     const classes = getTabRootStateClasses(true)
-    expect(classes).toContain('bg-[color-mix(in_srgb,var(--foreground)_6%,var(--card))]')
+    expect(classes).toContain('rounded-md')
+    expect(classes).toContain('bg-[color-mix(in_srgb,var(--foreground)_8%,var(--card))]')
     expect(classes).toContain('text-foreground')
     expect(classes).not.toContain('hover:text-foreground')
   })
 
   it('returns the shared inactive-tab surface treatment', () => {
     const classes = getTabRootStateClasses(false)
-    expect(classes).toContain('bg-card')
+    expect(classes).toContain('rounded-md')
+    expect(classes).not.toContain('bg-card')
     expect(classes).toContain('text-muted-foreground')
     expect(classes).toContain('hover:text-foreground')
   })

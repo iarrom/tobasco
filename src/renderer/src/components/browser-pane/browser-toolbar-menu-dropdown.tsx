@@ -40,6 +40,9 @@ type BrowserToolbarMenuDropdownProps = {
   onImportFromFile: () => void
   viewportPresetId: BrowserViewportPresetId | null
   onApplyViewportPreset: (nextId: BrowserViewportPresetId | null) => void
+  /** [FORK] Page-action items (grab/annotate/devtools/open-external) rendered at
+   *  the top of the menu, matching the reference's minimal "…" overflow. */
+  pageActions?: React.ReactNode
 }
 
 export function BrowserToolbarMenuDropdown({
@@ -55,7 +58,8 @@ export function BrowserToolbarMenuDropdown({
   onImportFromBrowser,
   onImportFromFile,
   viewportPresetId,
-  onApplyViewportPreset
+  onApplyViewportPreset,
+  pageActions
 }: BrowserToolbarMenuDropdownProps): React.JSX.Element {
   return (
     <DropdownMenu modal={false} open={menuOpen} onOpenChange={onMenuOpenChange}>
@@ -63,7 +67,7 @@ export function BrowserToolbarMenuDropdown({
         <Button
           size="icon"
           variant="ghost"
-          className="h-8 w-8"
+          className="h-6 w-6"
           title={translate(
             'auto.components.browser.pane.BrowserToolbarMenu.7b838540c7',
             'Browser menu'
@@ -73,6 +77,12 @@ export function BrowserToolbarMenuDropdown({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
+        {pageActions ? (
+          <>
+            {pageActions}
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
         {allProfiles.map((profile) => {
           const isSelectedProfile = profile.id === effectiveProfileId
           return (

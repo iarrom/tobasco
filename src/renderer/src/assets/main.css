@@ -57,6 +57,9 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  /* [FORK] Amber "warning" role — used by Plan mode (toggle + Build). */
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -145,6 +148,10 @@
   --accent-foreground: #171717;
   --destructive: #e40014;
   --destructive-foreground: #fcf3f3;
+  /* [FORK] Amber "warning" role for Plan mode; matches the codebase's existing
+     var(--warning, #f59e0b) fallback. Dark text on amber for AA contrast. */
+  --warning: #f59e0b;
+  --warning-foreground: #1c1206;
   --border: #e5e5e5;
   --input: #e5e5e5;
   --ring: #a1a1a1;
@@ -207,12 +214,15 @@
 /* ── Dark Mode ───────────────────────────────────────── */
 
 .dark {
-  --background: #0a0a0a;
-  --editor-surface: #1e1e1e;
+  /* Dark surfaces match Cursor Dark 1:1 — editor.background (#181818) for the
+     main content panes (native chat + terminal both render on --background),
+     and the darker sideBar/panel/menu tone (#141414) for chrome that frames it. */
+  --background: #181818;
+  --editor-surface: #181818;
   --foreground: #fafafa;
-  --card: #171717;
+  --card: #141414;
   --card-foreground: #fafafa;
-  --popover: #171717;
+  --popover: #141414;
   --popover-foreground: #fafafa;
   --primary: #e5e5e5;
   --primary-foreground: #171717;
@@ -224,6 +234,9 @@
   --accent-foreground: #fafafa;
   --destructive: #ff6568;
   --destructive-foreground: #df2225;
+  /* [FORK] Amber "warning" role for Plan mode (matches Cursor's amber pill). */
+  --warning: #e8b339;
+  --warning-foreground: #1c1206;
   --border: rgb(255 255 255 / 0.07);
   --input: rgb(255 255 255 / 0.15);
   --ring: #737373;
@@ -238,7 +251,7 @@
   --chart-4: var(--color-blue-700);
   --chart-5: var(--color-blue-800);
   /* Why: light mode sets worktree-sidebar to secondary (#f5f5f5); mirror that
-     lift in dark mode so the panel reads clearly above #0a0a0a canvas. */
+     lift in dark mode so the panel reads clearly above the #181818 canvas. */
   --worktree-sidebar: #2a2a2a;
   --worktree-sidebar-foreground: #fafafa;
   --worktree-sidebar-accent: #353535;
@@ -247,7 +260,7 @@
      aren't brighter than the rest of the UI in dark mode (#5906). */
   --worktree-sidebar-border: rgb(255 255 255 / 0.07);
   --worktree-sidebar-ring: #737373;
-  --sidebar: #171717;
+  --sidebar: #141414;
   --sidebar-foreground: #fafafa;
   --sidebar-primary: #1447e6;
   --sidebar-primary-foreground: #fafafa;
@@ -1312,6 +1325,46 @@
 
 .compact-agent-expansion-grid-expanded .compact-agent-expansion-content {
   animation: compact-agent-expansion-reveal 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* [FORK] Cursor-style "shimmer" for the label of the agent's currently-active
+   chat step (thinking / running a tool). A bright band sweeps across the muted
+   text so a live step reads as in-progress without a spinner. Uses tokenized
+   colors (no hardcoded hex) and text background-clip. */
+@keyframes native-chat-step-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -150% 0;
+  }
+}
+
+.native-chat-step-shimmer {
+  background-image: linear-gradient(
+    100deg,
+    var(--muted-foreground) 0%,
+    var(--muted-foreground) 38%,
+    var(--foreground) 50%,
+    var(--muted-foreground) 62%,
+    var(--muted-foreground) 100%
+  );
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: native-chat-step-shimmer 1.8s linear infinite;
+}
+
+/* Respect reduced-motion: drop the sweep, keep a plain muted label. */
+@media (prefers-reduced-motion: reduce) {
+  .native-chat-step-shimmer {
+    animation: none;
+    background-image: none;
+    -webkit-text-fill-color: currentColor;
+    color: var(--muted-foreground);
+  }
 }
 
 /* Why: the collapsed summary still uses pill spacing, while expanded compact

@@ -499,8 +499,12 @@
 .rich-markdown-editor {
   min-height: 100%;
   padding: 24px 32px 96px;
-  font-size: calc(14px + (var(--editor-font-zoom-level, 0) * 1px));
-  line-height: 1.7;
+  /* [FORK] Cursor-style reading column: cap the document at 756px, centered,
+     and match the native chat's type scale (13px / 1.6). */
+  max-width: 756px;
+  margin-inline: auto;
+  font-size: calc(13px + (var(--editor-font-zoom-level, 0) * 1px));
+  line-height: 1.6;
   outline: none;
 }
 

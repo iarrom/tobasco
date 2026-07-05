@@ -270,7 +270,7 @@ export function createMainWindow(
     ...(savedBounds ? { x: savedBounds.x, y: savedBounds.y } : {}),
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT,
-    title: opts?.title ?? 'Orca',
+    title: opts?.title ?? 'Pumpkin',
     show: false,
     // Why: macOS swallows the app-activating click by default, so clicking
     // back into Orca (e.g. the floating workspace) needed a second click.
@@ -1062,10 +1062,10 @@ export function createMainWindow(
     if (store.getUI().trayMinimizeNoticeShown !== true) {
       try {
         new Notification({
-          title: 'Orca',
+          title: 'Pumpkin',
           body: translateMain(
             'tray.minimizeNotice.body',
-            'Orca is still running in the system tray'
+            'Pumpkin is still running in the system tray'
           )
         }).show()
       } catch {

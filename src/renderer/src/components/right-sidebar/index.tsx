@@ -253,14 +253,16 @@ function RightSidebarInner(): React.JSX.Element {
       <TooltipTrigger asChild>
         <button
           type="button"
-          className="sidebar-toggle mr-1"
+          // [FORK] Mirror the tab-bar "+" button 1:1 so the toggle looks the same
+          // whether the sidebar is open or closed.
+          className="mr-1 flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground"
           onClick={toggleRightSidebar}
           aria-label={translate(
             'auto.components.right.sidebar.index.e8e2e4ce74',
             'Toggle right sidebar'
           )}
         >
-          <PanelRight size={16} />
+          <PanelRight className="size-3.5" />
         </button>
       </TooltipTrigger>
       <TooltipContent side="bottom" sideOffset={6}>

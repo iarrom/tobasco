@@ -32,6 +32,8 @@ import SortableTab from './SortableTab'
 import EditorFileTab from './EditorFileTab'
 import BrowserTab, { getBrowserTabLabel } from './BrowserTab'
 import { QuickLaunchAgentMenuItems } from './QuickLaunchButton'
+import { TabBarQuickCommandsMenuItems } from './TabBarQuickCommandsMenuItems'
+import { useTabBarQuickCommands } from './use-tab-bar-quick-commands'
 import type { DropIndicator } from './drop-indicator'
 import { reconcileTabOrder } from './reconcile-order'
 import type { HoveredTabInsertion, TabDragItemData } from '../tab-group/useTabDragSplit'
@@ -39,6 +41,7 @@ import { resolveTabIndicatorEdges } from '../tab-group/tab-insertion'
 import { getEditorDisplayLabel } from '@/components/editor/editor-labels'
 import TabBarCreateEntry from './TabBarCreateEntry'
 import { ShellIcon } from './shell-icons'
+import { AgentIcon } from '@/lib/agent-catalog'
 import { resolveWindowsShellLaunchTarget } from './windows-shell-launch'
 import { focusTerminalTabSurface } from '@/lib/focus-terminal-tab-surface'
 import { type AgentDetectionTarget, useDetectedAgents } from '@/hooks/useDetectedAgents'
@@ -440,6 +443,10 @@ function TabBarInner({
   const projectRuntimeShellMenuMode = getProjectRuntimeShellMenuMode(localProjectRuntime)
   const resolvedGroupId = groupId ?? activeGroupIdForWorktree ?? worktreeId
 
+  // [FORK] Quick commands surface inside the "+" menu instead of the tab-bar
+  // action cluster. Hook holds state + the add dialog (mounted outside the menu).
+  const quickCommands = useTabBarQuickCommands({ worktreeId, groupId: resolvedGroupId })
+
   const statusByRelativePath = useMemo(() => buildStatusMap(gitStatusEntries), [gitStatusEntries])
   const unifiedTabByVisibleId = useMemo(
     () => createUnifiedTabLookup(unifiedTabs, resolvedGroupId),
@@ -647,6 +654,26 @@ function TabBarInner({
       return
     }
     queueNewActiveTerminalFocusAfterNewTabMenuClose()
+  }
+  // [FORK] Direct launch for the leading bar icons — no menu is open, so the
+  // menu-close focus queue must not be armed (it would fire on a later close).
+  const launchAgentFromBarIcon = (agent: TuiAgent): void => {
+    const option = agentLaunchOptions.find((candidate) => candidate.agent === agent)
+    const result = launchAgentInNewTab({
+      agent,
+      worktreeId,
+      groupId: resolvedGroupId,
+      launchSource: 'tab_bar_quick_launch'
+    })
+    if (!result) {
+      toast.error(
+        translate(
+          'auto.components.tab.bar.TabBar.ab589350e5',
+          'Could not build launch command for {{value0}}.',
+          { value0: option?.label ?? agent }
+        )
+      )
+    }
   }
   const runPendingNewTabMenuFocusAfterClose = (): void => {
     const pendingFocus = pendingNewTabMenuFocusRef.current
@@ -1022,6 +1049,46 @@ function TabBarInner({
       // editor drop zone.
       data-native-file-drop-target="editor"
     >
+      {/* [FORK] Cursor-style quick-create icons at the strip start (terminal /
+          browser / agents); the "+" menu itself moved to the row's right edge. */}
+      <div
+        className="my-auto flex shrink-0 items-center gap-0.5 pl-1"
+        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      >
+        <button
+          className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+          title={translate('auto.components.tab.bar.TabBar.d364f3c8d4', 'New Terminal')}
+          aria-label={translate('auto.components.tab.bar.TabBar.d364f3c8d4', 'New Terminal')}
+          onClick={onNewTerminalTab}
+        >
+          <TerminalSquare className="size-3.5" />
+        </button>
+        {!terminalOnly ? (
+          <button
+            className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+            title={translate('components.tab-bar.newBrowserTab', 'New Browser Tab')}
+            aria-label={translate('components.tab-bar.newBrowserTab', 'New Browser Tab')}
+            onClick={onNewBrowserTab}
+          >
+            <Globe className="size-3.5" />
+          </button>
+        ) : null}
+        {showAgentLaunchItems
+          ? agentLaunchOptions
+              .filter((option) => option.agent === 'claude' || option.agent === 'cursor')
+              .map((option) => (
+                <button
+                  key={option.agent}
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                  title={option.label}
+                  aria-label={option.label}
+                  onClick={() => launchAgentFromBarIcon(option.agent)}
+                >
+                  <AgentIcon agent={option.agent} size={13} />
+                </button>
+              ))
+          : null}
+      </div>
       {tabStripOverflowState.hasOverflow ? (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -1072,7 +1139,9 @@ function TabBarInner({
             // a different box than the tab's own `border-t`, producing a
             // heavier-looking L-corner at the leftmost tab when inactive.
             className={[
-              'terminal-tab-strip flex h-full min-w-0 max-w-full flex-1 items-stretch overflow-x-auto overflow-y-hidden border-r border-border/70',
+              // [FORK] Cursor-style chips: small gap between text-sized tabs, no
+              // trailing strip border.
+              'terminal-tab-strip flex h-full min-w-0 max-w-full flex-1 items-stretch gap-0.5 overflow-x-auto overflow-y-hidden px-1',
               getTabStripScrollMaskClassName(tabStripOverflowState)
             ]
               .filter(Boolean)
@@ -1270,7 +1339,9 @@ function TabBarInner({
       >
         <DropdownMenuTrigger asChild>
           <button
-            className="ml-2 my-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+            // [FORK] h-6 matches the 24px chip tabs; ml-auto docks "+" at the
+            // row's right edge (next to the right-sidebar toggle), Cursor-style.
+            className="ml-auto mr-1 my-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground"
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
             title={translate('auto.components.tab.bar.TabBar.b1a132357f', 'New tab')}
             // Why: aria-label matches the tooltip so E2E can locate the "+"
@@ -1283,7 +1354,8 @@ function TabBarInner({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          align="start"
+          // [FORK] align end: the trigger now sits at the row's right edge.
+          align="end"
           sideOffset={6}
           className="w-72 max-w-[calc(100vw-1rem)] rounded-[11px] border-border/80 p-1 shadow-[0_16px_36px_rgba(0,0,0,0.24)]"
           onCloseAutoFocus={(e) => {
@@ -1326,8 +1398,20 @@ function TabBarInner({
               />
             </>
           ) : null}
+          {/* [FORK] Quick commands relocated from the tab-bar action cluster. */}
+          {showStaticCreateMenuItems && quickCommands.available ? (
+            <>
+              <DropdownMenuSeparator />
+              <TabBarQuickCommandsMenuItems
+                controller={quickCommands}
+                onFocusTerminal={queueTerminalTabFocusAfterNewTabMenuClose}
+                onFocusNewActiveTerminal={queueNewActiveTerminalFocusAfterNewTabMenuClose}
+              />
+            </>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
+      {quickCommands.dialog}
     </div>
   )
 }

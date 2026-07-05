@@ -6,8 +6,9 @@ import {
   recallPrevious,
   type ComposerAutocomplete,
   type HistoryState,
-  type SlashCommandSuggestion
+  type UniversalSlashItem
 } from './native-chat-composer-state'
+import type { UniversalSlashChooseIntent } from './use-native-chat-universal-slash'
 
 export type UseNativeChatComposerKeyDownArgs = {
   autocomplete: ComposerAutocomplete
@@ -15,8 +16,9 @@ export type UseNativeChatComposerKeyDownArgs = {
   draft: string
   caret: number
   history: HistoryState
-  chooseSlash: (command: SlashCommandSuggestion) => void
-  dispatchSlash: (command: SlashCommandSuggestion) => void
+  /** [FORK] Flat item list of the universal `/` menu (skills/commands/modes). */
+  slashItems: readonly UniversalSlashItem[]
+  chooseSlashItem: (item: UniversalSlashItem, intent: UniversalSlashChooseIntent) => void
   interrupt: () => void
   send: () => void
   setActiveSuggestion: Dispatch<SetStateAction<number>>
@@ -31,8 +33,8 @@ export function useNativeChatComposerKeyDown({
   draft,
   caret,
   history,
-  chooseSlash,
-  dispatchSlash,
+  slashItems,
+  chooseSlashItem,
   interrupt,
   send,
   setActiveSuggestion,
@@ -42,27 +44,28 @@ export function useNativeChatComposerKeyDown({
 }: UseNativeChatComposerKeyDownArgs): KeyboardEventHandler<HTMLTextAreaElement> {
   return useCallback(
     (event) => {
-      if (autocomplete.mode === 'slash' && autocomplete.suggestions.length > 0) {
+      // [FORK] The universal `/` menu navigates one flat index across its
+      // Skills / Commands / Modes sections. Enter submits (commands dispatch to
+      // the TUI, skills insert, modes toggle); Tab inserts without submitting.
+      if (autocomplete.mode === 'slash' && slashItems.length > 0) {
         if (event.key === 'ArrowDown') {
           event.preventDefault()
-          setActiveSuggestion((i) => (i + 1) % autocomplete.suggestions.length)
+          setActiveSuggestion((i) => (i + 1) % slashItems.length)
           return
         }
         if (event.key === 'ArrowUp') {
           event.preventDefault()
-          setActiveSuggestion(
-            (i) => (i - 1 + autocomplete.suggestions.length) % autocomplete.suggestions.length
-          )
+          setActiveSuggestion((i) => (i - 1 + slashItems.length) % slashItems.length)
           return
         }
         if (event.key === 'Enter') {
           event.preventDefault()
-          dispatchSlash(autocomplete.suggestions[activeSuggestion] ?? autocomplete.suggestions[0])
+          chooseSlashItem(slashItems[activeSuggestion] ?? slashItems[0], 'submit')
           return
         }
         if (event.key === 'Tab') {
           event.preventDefault()
-          chooseSlash(autocomplete.suggestions[activeSuggestion] ?? autocomplete.suggestions[0])
+          chooseSlashItem(slashItems[activeSuggestion] ?? slashItems[0], 'insert')
           return
         }
         if (event.key === 'Escape') {
@@ -135,8 +138,8 @@ export function useNativeChatComposerKeyDown({
     [
       autocomplete,
       activeSuggestion,
-      chooseSlash,
-      dispatchSlash,
+      slashItems,
+      chooseSlashItem,
       interrupt,
       send,
       draft,

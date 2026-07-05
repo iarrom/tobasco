@@ -46,6 +46,7 @@ const FIELD_OWNERSHIP = {
   activeWorktreeId: 'global',
   activeTabId: 'global',
   browserUrlHistory: 'global',
+  bookmarks: 'global',
   // Why: SSH-connection ids, not worktrees. SSH stays in the local blob today
   // (the runtime split intentionally leaves SSH ownership unchanged), so this
   // reconnect list rides along in 'local'.

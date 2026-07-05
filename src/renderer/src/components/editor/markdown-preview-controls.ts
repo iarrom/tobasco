@@ -6,7 +6,13 @@ type MarkdownPreviewTarget = Pick<OpenFile, 'mode' | 'diffSource'> & {
   language: string
 }
 
-const MARKDOWN_EDIT_VIEW_MODES = ['source', 'rich'] as const satisfies readonly MarkdownViewMode[]
+// [FORK] 'preview' joins the edit-tab modes and becomes the default: markdown
+// opens read-only rendered (Cursor-style); editing is an explicit toggle away.
+const MARKDOWN_EDIT_VIEW_MODES = [
+  'preview',
+  'source',
+  'rich'
+] as const satisfies readonly MarkdownViewMode[]
 const MARKDOWN_DIFF_VIEW_MODES = ['source', 'rich'] as const satisfies readonly MarkdownViewMode[]
 const MERMAID_VIEW_MODES = ['source', 'rich'] as const satisfies readonly MarkdownViewMode[]
 const CSV_VIEW_MODES = ['source', 'rich'] as const satisfies readonly MarkdownViewMode[]
@@ -73,6 +79,10 @@ export function getDefaultMarkdownViewMode(target: MarkdownPreviewTarget): Markd
     return 'source'
   }
   const modes = getMarkdownViewModes(target)
+  // [FORK] Read-only rendered preview is the default wherever it's offered.
+  if (modes.includes('preview')) {
+    return 'preview'
+  }
   return modes.includes('rich') ? 'rich' : 'source'
 }
 

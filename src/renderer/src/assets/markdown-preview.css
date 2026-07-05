@@ -3,8 +3,15 @@
 .markdown-preview {
   position: relative;
   padding: 24px 32px;
-  font-size: inherit;
-  line-height: 1.7;
+  /* [FORK] Cursor-style reading column with the native chat's type scale
+     (13px / 1.6). The cap is 756px of TEXT plus this container's own padding
+     (64px), the annotation-rail gap (32px) and the rail itself (≤300px) —
+     the per-block grid below reserves that rail, so capping at 756px here
+     would squeeze the actual text to ~350px. */
+  max-width: 1152px;
+  margin-inline: auto;
+  font-size: 13px;
+  line-height: 1.6;
   min-width: 0;
   flex: 1;
 }
@@ -738,8 +745,35 @@
 .markdown-body li.task-list-item {
   list-style: none;
 }
+/* [FORK] Roomier list rhythm: a bit more air between items, clear separation
+   between adjacent ordered/unordered lists, nested lists breathe slightly. */
 .markdown-body li {
-  margin: 0.25em 0;
+  margin: 0.35em 0;
+}
+
+.markdown-body li > ul,
+.markdown-body li > ol {
+  margin: 0.35em 0 0.5em;
+}
+
+.markdown-body ul + ol,
+.markdown-body ol + ul,
+.markdown-body ul + ul,
+.markdown-body ol + ol {
+  margin-top: 1em;
+}
+
+/* [FORK] Clickable file-reference chips (inline code naming a repo file):
+   soft, low-contrast light blue — readable as a link without shouting. */
+.markdown-body code.markdown-file-reference {
+  color: light-dark(#4a6da7, #a3c2e8);
+  background: color-mix(in srgb, #7ba3d8 10%, transparent);
+  cursor: pointer;
+}
+
+.markdown-body code.markdown-file-reference:hover {
+  background: color-mix(in srgb, #7ba3d8 18%, transparent);
+  text-decoration: underline;
 }
 
 /* Why: native checkbox rendering has poor contrast against the dark

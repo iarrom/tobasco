@@ -7,6 +7,7 @@ import type {
 } from '../../../shared/types'
 import { pruneLocalTerminalScrollbackBuffers } from '../../../shared/workspace-session-terminal-buffers'
 import { normalizeBrowserHistoryEntries } from '../../../shared/workspace-session-browser-history'
+import { normalizeBookmarks } from '../../../shared/bookmarks'
 import type { AppState } from '../store'
 import type { OpenFile } from '../store/slices/editor'
 import { buildPersistedUnifiedTabSessionData } from './workspace-session-unified-tabs'
@@ -49,6 +50,7 @@ export type WorkspaceSessionSnapshot = Pick<
   | 'browserPagesByWorkspace'
   | 'activeBrowserTabIdByWorktree'
   | 'browserUrlHistory'
+  | 'bookmarks'
   | 'unifiedTabsByWorktree'
   | 'groupsByWorktree'
   | 'layoutByWorktree'
@@ -87,6 +89,7 @@ export const SESSION_RELEVANT_FIELDS = [
   'browserPagesByWorkspace',
   'activeBrowserTabIdByWorktree',
   'browserUrlHistory',
+  'bookmarks',
   'unifiedTabsByWorktree',
   'groupsByWorktree',
   'layoutByWorktree',
@@ -361,6 +364,9 @@ export function buildWorkspaceSessionPayload(
     // the payload boundary so stale renderer state cannot make every session
     // write stringify an oversized legacy history array.
     browserUrlHistory: normalizeBrowserHistoryEntries(snapshot.browserUrlHistory),
+    // [FORK] Global bookmarks bar entries — user-lifetime state, same ownership
+    // as browserUrlHistory. Normalize at the payload boundary.
+    bookmarks: normalizeBookmarks(snapshot.bookmarks ?? []),
     // Why: split creation and tab creation are separate renderer updates.
     // Persist only layouts backed by real tabs so a reload cannot restore a
     // blank split pane from that transient midpoint.

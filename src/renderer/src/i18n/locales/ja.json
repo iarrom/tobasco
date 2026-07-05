@@ -12325,7 +12325,33 @@
         "noSkills": "一致するスキルがありません",
         "localAttachmentUnsupported": "ローカル添付ファイルはリモート セッションでは使用できません。",
         "removeAttachment": "添付ファイルを削除する",
-        "pastedImageLabel": "貼り付けた画像"
+        "pastedImageLabel": "貼り付けた画像",
+        "openImagePreview": "Open image preview",
+        "addMenu": {
+          "trigger": "Add context",
+          "image": "Image",
+          "skills": "Skills",
+          "noSkills": "No skills found",
+          "mcpServers": "MCP Servers",
+          "noMcpServers": "No MCP servers configured"
+        },
+        "planMode": {
+          "enable": "Plan",
+          "disable": "Turn off Plan",
+          "active": "Plan"
+        },
+        "dropImage": "Drop image to attach",
+        "imagePreview": "Image preview",
+        "closePreview": "Close preview",
+        "model": {
+          "modelsHeader": "Models",
+          "optionsHeader": "Options",
+          "thinking": "Thinking",
+          "fast": "Fast",
+          "contextHeader": "Context",
+          "effortHeader": "Effort"
+        },
+        "planPlaceholder": "Plan and design before building…"
       },
       "tool": {
         "running": "実行中…",
@@ -12377,6 +12403,50 @@
         "title": "{{value0}} を許可しますか?",
         "allow": "許可する",
         "deny": "拒否"
+      },
+      "thought": {
+        "briefly": "briefly",
+        "forSeconds": "for {{count}}s",
+        "forMinutes": "for {{count}}m",
+        "active": "Thinking…",
+        "done": "Thought"
+      },
+      "plan": {
+        "creating": "Creating plan…",
+        "created": "Created plan",
+        "reviewTitle": "Review Plan",
+        "dismiss": "Dismiss plan",
+        "build": "Build",
+        "buildModel": "Build model",
+        "tab": {
+          "menu": "Plan menu",
+          "editSource": "Edit source",
+          "viewRendered": "View rendered",
+          "copyPath": "Copy path"
+        }
+      },
+      "workedFor": "Worked for {{duration}}",
+      "worked": "Worked",
+      "queue": {
+        "imageOnly": "Image attachment",
+        "imagesBadge": "img",
+        "edit": "Edit message",
+        "sendNow": "Send now",
+        "remove": "Remove from queue"
+      },
+      "slash": {
+        "skills": "Skills",
+        "commands": "Commands",
+        "modes": "Modes",
+        "modeOn": "on",
+        "planMode": "Plan",
+        "planModeDescription": "Research and write a plan before coding"
+      },
+      "subagent": {
+        "verb": "Agent",
+        "background": "background",
+        "emptyTranscript": "No sub-agent activity recorded yet.",
+        "loading": "Loading…"
       }
     },
     "tab": {
@@ -12397,6 +12467,26 @@
           "githubPullRequestNumber": "PR #{{value0}}"
         }
       }
+    },
+    "browser": {
+      "toolbar": {
+        "toggleBookmarks": "ブックマークバーの表示切り替え",
+        "addBookmark": "ブックマークを追加",
+        "removeBookmark": "ブックマークを削除",
+        "design": "Design"
+      },
+      "bookmarks": {
+        "open": "開く",
+        "openExternal": "既定のブラウザーで開く",
+        "rename": "名前を変更",
+        "remove": "削除"
+      }
+    },
+    "tab-bar": {
+      "newBrowserTab": "New Browser Tab"
+    },
+    "tab-group": {
+      "toggleRightSidebar": "Toggle right sidebar"
     }
   }
 }

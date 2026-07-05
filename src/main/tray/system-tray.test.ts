@@ -75,9 +75,9 @@ describe('createSystemTray', () => {
     expect(tray).not.toBeNull()
     expect(trayInstances).toHaveLength(1)
     expect(trayInstances[0].image).toBe(resizedImage)
-    expect(trayInstances[0].setToolTip).toHaveBeenCalledWith('Orca')
+    expect(trayInstances[0].setToolTip).toHaveBeenCalledWith('Pumpkin')
     const items = builtMenuItems()
-    expect(items.map((i) => i.label)).toEqual(['Open Orca', undefined, 'Quit'])
+    expect(items.map((i) => i.label)).toEqual(['Open Pumpkin', undefined, 'Quit'])
     expect(items[1].type).toBe('separator')
   })
 
@@ -90,7 +90,7 @@ describe('createSystemTray', () => {
     createSystemTray({ appIcon: 'classic', onOpen, onQuit })
 
     const items = builtMenuItems()
-    items.find((i) => i.label === 'Open Orca')?.click?.()
+    items.find((i) => i.label === 'Open Pumpkin')?.click?.()
     expect(onOpen).toHaveBeenCalledTimes(1)
 
     const clickHandler = trayInstances[0].on.mock.calls.find((c) => c[0] === 'click')?.[1] as

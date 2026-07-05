@@ -1,7 +1,7 @@
 import { Suspense, useMemo } from 'react'
 import { lazyWithRetry as lazy } from '@/lib/lazy-with-retry'
 import { useDroppable } from '@dnd-kit/core'
-import { Ellipsis, X } from 'lucide-react'
+import { Ellipsis, PanelRight, X } from 'lucide-react'
 import { useAppStore } from '../../store'
 import {
   DropdownMenu,
@@ -12,7 +12,6 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import TabBar from '../tab-bar/TabBar'
 
-import { TabBarQuickCommandsButton } from '../tab-bar/TabBarQuickCommandsButton'
 import { useTabGroupWorkspaceModel } from './useTabGroupWorkspaceModel'
 import { closeTerminalTab } from '../terminal/terminal-tab-actions'
 import { resolveGroupTabFromVisibleId } from './tab-group-visible-id'
@@ -46,6 +45,7 @@ export default function TabGroupPanel({
   hoveredTabInsertion?: HoveredTabInsertion | null
 }): React.JSX.Element {
   const rightSidebarOpen = useAppStore((state) => state.rightSidebarOpen)
+  const toggleRightSidebar = useAppStore((state) => state.toggleRightSidebar)
   const sidebarOpen = useAppStore((state) => state.sidebarOpen)
 
   const model = useTabGroupWorkspaceModel({ groupId, worktreeId })
@@ -253,9 +253,7 @@ export default function TabGroupPanel({
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           >
             <div className={focusedActionChromeClassName}>
-              {isFocused ? (
-                <TabBarQuickCommandsButton worktreeId={worktreeId} groupId={groupId} />
-              ) : null}
+              {/* [FORK] Quick commands moved into the tab-bar "+" menu. */}
               {isFocused && hasSplitGroups ? (
                 <Tooltip>
                   <DropdownMenu modal={false}>
@@ -301,24 +299,35 @@ export default function TabGroupPanel({
               ) : null}
             </div>
           </div>
-          {/* Why: Electron's native drag hit-test ignores z-index — a no-drag
-              element only overrides drag when it's a DOM descendant, not a
-              sibling in another branch. The floating right-sidebar toggle and
-              the fixed-position window-controls overlay for custom desktop
-              chrome both sit in separate DOM trees, so we need an explicit
-              no-drag child here to punch holes in the drag surface beneath
-              them. The sidebar toggle is 40px (w-10); window controls add
-              --window-controls-width (138px when active, 0px otherwise) on top. */}
+          {/* [FORK] The right-sidebar toggle used to be a floating overlay from
+              another DOM branch, with a reserved no-drag hole here beneath it —
+              which made its size/centering drift from the "+" button. Render
+              the real button inline in the tab row instead: same row, same
+              geometry as "+", adjacent by construction. padding-right keeps it
+              clear of the fixed window-controls overlay on custom chrome. */}
           {reserveClosedExplorerToggleSpace && !rightSidebarOpen ? (
             <div
-              className="shrink-0"
+              className="flex shrink-0 items-center"
               style={
                 {
-                  width: 'calc(40px + var(--window-controls-width, 0px))',
+                  paddingRight: 'var(--window-controls-width, 0px)',
                   WebkitAppRegion: 'no-drag'
                 } as React.CSSProperties
               }
-            />
+            >
+              <button
+                type="button"
+                className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                title={translate('components.tab-group.toggleRightSidebar', 'Toggle right sidebar')}
+                aria-label={translate(
+                  'components.tab-group.toggleRightSidebar',
+                  'Toggle right sidebar'
+                )}
+                onClick={toggleRightSidebar}
+              >
+                <PanelRight className="size-3.5" />
+              </button>
+            </div>
           ) : null}
         </div>
       </div>

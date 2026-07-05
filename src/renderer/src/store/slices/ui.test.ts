@@ -1011,8 +1011,10 @@ describe('createUISlice hydratePersistedUI', () => {
       })
     )
 
-    expect(store.getState().sidebarWidth).toBe(220)
-    expect(store.getState().rightSidebarWidth).toBe(220)
+    // [FORK] Minimum lowered to 180 (upstream 220) alongside the removed
+    // titlebar app name.
+    expect(store.getState().sidebarWidth).toBe(180)
+    expect(store.getState().rightSidebarWidth).toBe(180)
   })
 
   it('clamps persisted markdown toc panel widths into the supported range', () => {

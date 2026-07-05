@@ -4,9 +4,11 @@ import { Globe, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command'
+import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store'
 import { DEFAULT_SEARCH_ENGINE, type SearchEngine } from '../../../../shared/browser-url'
 import { buildBrowserAddressBarSuggestions } from './browser-address-bar-suggestions'
+import { formatBrowserUrlDisplay } from './browser-url-display'
 
 type BrowserAddressBarProps = {
   value: string
@@ -358,7 +360,9 @@ export default function BrowserAddressBar({
       <PopoverTrigger asChild>
         <form
           ref={setAddressBarFormRef}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-border bg-background px-3 py-1 shadow-sm"
+          // [FORK] Borderless address field matching the reference browser chrome:
+          // no box/shadow, host emphasized and scheme/path dimmed via the overlay.
+          className="relative flex min-w-0 flex-1 items-center px-1"
           onSubmit={(event) => {
             event.preventDefault()
             setOpen(false)
@@ -367,7 +371,6 @@ export default function BrowserAddressBar({
             onSubmit()
           }}
         >
-          <Globe className="size-4 shrink-0 text-muted-foreground" />
           <Input
             ref={inputRef}
             value={value}
@@ -375,7 +378,15 @@ export default function BrowserAddressBar({
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             data-orca-browser-address-bar="true"
-            className="h-auto border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0"
+            className={cn(
+              // dark:bg-transparent + rounded-none: tailwind-merge keeps the base
+              // Input's dark:bg-input/30 and rounded-md otherwise, which reads as
+              // a pill instead of the reference's flat borderless field.
+              'h-auto rounded-none border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent',
+              // Hide the raw text while the dimmed host/path overlay is shown so
+              // the two don't double up; the input still owns the caret on focus.
+              !open && value ? 'text-transparent' : ''
+            )}
             spellCheck={false}
             autoCapitalize="none"
             autoCorrect="off"
@@ -395,6 +406,22 @@ export default function BrowserAddressBar({
             aria-controls="browser-history-listbox"
             aria-autocomplete="list"
           />
+          {!open && value ? (
+            <div className="pointer-events-none absolute inset-y-0 left-1 right-1 flex items-center">
+              <span className="truncate text-sm">
+                {(() => {
+                  const { scheme, host, path } = formatBrowserUrlDisplay(value)
+                  return (
+                    <>
+                      <span className="text-muted-foreground">{scheme}</span>
+                      <span className="text-foreground">{host}</span>
+                      <span className="text-muted-foreground">{path}</span>
+                    </>
+                  )
+                })()}
+              </span>
+            </div>
+          ) : null}
         </form>
       </PopoverTrigger>
       {suggestions.length > 0 && (

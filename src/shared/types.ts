@@ -871,6 +871,18 @@ export type BrowserLoadError = {
   validatedUrl: string
 }
 
+// [FORK] Persisted browser bookmark shown on the browser bookmarks bar. Global
+// (client-wide), not worktree-scoped — mirrors browserUrlHistory's ownership.
+export type Bookmark = {
+  id: string
+  url: string
+  title: string
+  faviconUrl: string | null
+  createdAt: number
+  /** Ascending display order on the bookmarks bar; lower renders first. */
+  sortOrder: number
+}
+
 // Why: BrowserPage persists the active viewport preset so CDP emulation can be
 // reapplied on reload/navigation without the user re-picking from the toolbar.
 export type BrowserViewportPresetId =
@@ -1052,6 +1064,8 @@ export type WorkspaceSessionState = {
   activeTabTypeByWorktree?: Record<string, WorkspaceVisibleTabType>
   /** Global browser URL history for address bar autocomplete. */
   browserUrlHistory?: BrowserHistoryEntry[]
+  /** [FORK] Global browser bookmarks shown on the bookmarks bar. */
+  bookmarks?: Bookmark[]
   /** Per-worktree last-active terminal tab ID at shutdown. */
   activeTabIdByWorktree?: Record<string, string | null>
   /** Unified tab model — present when saved by a build that includes TabsSlice.

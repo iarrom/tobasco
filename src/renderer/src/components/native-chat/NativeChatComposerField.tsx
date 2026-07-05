@@ -1,17 +1,12 @@
 import type { ClipboardEventHandler, KeyboardEventHandler, RefObject } from 'react'
-import { Image as ImageIcon, ImageOff, X } from 'lucide-react'
-import { translate } from '@/i18n/i18n'
+import { ImageOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { NATIVE_FILE_DROP_TARGET } from '../../../../shared/native-file-drop'
-import { basename } from '@/lib/path'
-import { isNativeChatPastedImagePath } from './native-chat-image-paste'
-import type { ComposerAutocomplete, SlashCommandSuggestion } from './native-chat-composer-state'
-import {
-  NativeChatMentionHint,
-  NativeChatSkillMenu,
-  NativeChatSlashMenu
-} from './NativeChatAutocompleteMenus'
+import type { ComposerAutocomplete, UniversalSlashItem } from './native-chat-composer-state'
+import { NativeChatMentionHint, NativeChatSkillMenu } from './NativeChatAutocompleteMenus'
+import { NativeChatUniversalSlashMenu } from './NativeChatUniversalSlashMenu'
 import { NativeChatComposerActions } from './NativeChatComposerActions'
+import { NativeChatAttachmentThumbnails } from './NativeChatAttachmentThumbnails'
 import { nativeChatComposerPlaceholder } from './native-chat-composer-target'
 import type { DiscoveredSkill } from '../../../../shared/skills'
 
@@ -31,11 +26,21 @@ export type NativeChatComposerFieldProps = {
   dictationDisabled: boolean
   isDictating: boolean
   isDictationHoldMode: boolean
+  /** [FORK] Cursor-style model picker rendered next to the "+" button. */
+  modelPicker?: React.ReactNode
+  /** [FORK] Cursor-style "+" menu replacing the bare attach button. */
+  addMenu?: React.ReactNode
+  /** [FORK] Amber "Plan" pill shown right of "+" while plan mode is on. */
+  planPill?: React.ReactNode
+  /** [FORK] Overrides the textarea placeholder (e.g. plan-mode prompt hint). */
+  placeholder?: string
   onDraftChange: (value: string, element: HTMLTextAreaElement) => void
   onTextareaSelect: (element: HTMLTextAreaElement) => void
   onKeyDown: KeyboardEventHandler<HTMLTextAreaElement>
   onPaste: ClipboardEventHandler<HTMLTextAreaElement>
-  onChooseSlash: (command: SlashCommandSuggestion) => void
+  /** [FORK] Universal `/` menu items (skills / commands / modes). */
+  slashItems: readonly UniversalSlashItem[]
+  onChooseSlashItem: (item: UniversalSlashItem) => void
   onAcceptMention: () => void
   onChooseSkill: (skill: DiscoveredSkill) => void
   onRemoveImageAttachment: (id: string) => void
@@ -68,11 +73,16 @@ export function NativeChatComposerField({
   dictationDisabled,
   isDictating,
   isDictationHoldMode,
+  modelPicker,
+  addMenu,
+  planPill,
+  placeholder,
   onDraftChange,
   onTextareaSelect,
   onKeyDown,
   onPaste,
-  onChooseSlash,
+  slashItems,
+  onChooseSlashItem,
   onAcceptMention,
   onChooseSkill,
   onRemoveImageAttachment,
@@ -88,11 +98,11 @@ export function NativeChatComposerField({
       <div className="px-3 py-2 sm:px-4">
         {/* [FORK] Уже композер (max-w-xl вместо 3xl) — компактнее, как в Cursor. */}
         <div className="relative mx-auto w-full max-w-xl">
-          {autocomplete.mode === 'slash' && autocomplete.suggestions.length > 0 ? (
-            <NativeChatSlashMenu
-              suggestions={autocomplete.suggestions}
+          {autocomplete.mode === 'slash' && slashItems.length > 0 ? (
+            <NativeChatUniversalSlashMenu
+              items={slashItems}
               activeIndex={activeSuggestion}
-              onChoose={onChooseSlash}
+              onChoose={onChooseSlashItem}
             />
           ) : null}
           {autocomplete.mode === 'mention' ? (
@@ -119,38 +129,10 @@ export function NativeChatComposerField({
               'dark:bg-input/30'
             )}
           >
-            {imageAttachments.length > 0 ? (
-              <div className="mb-2 flex flex-wrap gap-1.5 px-1">
-                {imageAttachments.map((attachment) => (
-                  <div
-                    key={attachment.id}
-                    className="flex max-w-full items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground"
-                    title={attachment.path}
-                  >
-                    <ImageIcon className="size-3.5 shrink-0" />
-                    <span className="max-w-56 truncate">
-                      {isNativeChatPastedImagePath(attachment.path)
-                        ? translate(
-                            'components.native-chat.composer.pastedImageLabel',
-                            'Pasted image'
-                          )
-                        : basename(attachment.path)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => onRemoveImageAttachment(attachment.id)}
-                      aria-label={translate(
-                        'components.native-chat.composer.removeAttachment',
-                        'Remove attachment'
-                      )}
-                      className="flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : null}
+            <NativeChatAttachmentThumbnails
+              attachments={imageAttachments}
+              onRemove={onRemoveImageAttachment}
+            />
             <textarea
               ref={textareaRef}
               value={draft}
@@ -160,14 +142,14 @@ export function NativeChatComposerField({
               onKeyDown={onKeyDown}
               onPaste={onPaste}
               onSelect={(e) => onTextareaSelect(e.currentTarget)}
-              placeholder={nativeChatComposerPlaceholder(hasPty, canSend)}
+              placeholder={placeholder ?? nativeChatComposerPlaceholder(hasPty, canSend)}
               // Why: coarse-pointer min-height follows the app's touch target convention.
               // scrollbar-sleek keeps the overflow gutter from showing the heavy
               // native scrollbar once the draft exceeds max-height.
               // field-sizing-content grows the textarea with the draft between
               // min-h/max-h (auto-resize without JS), then scrolls past max-h.
               className={cn(
-                'scrollbar-sleek field-sizing-content min-h-12 max-h-64 w-full resize-none bg-transparent px-2 py-1 text-sm outline-none pointer-coarse:min-h-14',
+                'scrollbar-sleek field-sizing-content min-h-12 max-h-64 w-full resize-none bg-transparent px-2 py-1 text-[13px] outline-none pointer-coarse:min-h-14',
                 'placeholder:text-muted-foreground/60 disabled:cursor-not-allowed disabled:opacity-50'
               )}
             />
@@ -179,6 +161,9 @@ export function NativeChatComposerField({
                 isWorking={isWorking}
                 isDictating={isDictating}
                 isDictationHoldMode={isDictationHoldMode}
+                modelPicker={modelPicker}
+                addMenu={addMenu}
+                planPill={planPill}
                 onAttach={onAttach}
                 onDictationToggle={onDictationToggle}
                 onDictationHoldStart={onDictationHoldStart}

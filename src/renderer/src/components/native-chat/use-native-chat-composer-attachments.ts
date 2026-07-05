@@ -30,6 +30,7 @@ export function useNativeChatComposerAttachments({
   imageAttachments: NativeChatComposerImageAttachment[]
   appendImageAttachments: (paths: string[]) => void
   attachLocalPaths: (paths: string[]) => void
+  attachHostResolvedImagePaths: (paths: string[]) => void
   clearImageAttachments: () => void
   removeImageAttachment: (id: string) => void
 } {
@@ -127,10 +128,28 @@ export function useNativeChatComposerAttachments({
     [appendImageAttachments, insertFileReferences, resolveTarget, setNotice, textareaRef]
   )
 
+  // Attach image paths that already live on the agent's host — clipboard-pasted
+  // images are written to the correct host by the main process (local temp, or
+  // the remote /tmp over SFTP for SSH sessions), so they skip the remote refusal
+  // in attachLocalPaths that guards genuinely-local OS drops/picks.
+  const attachHostResolvedImagePaths = useCallback(
+    (paths: string[]) => {
+      const imagePaths = paths.filter(isNativeChatImageAttachmentPath)
+      if (imagePaths.length === 0) {
+        return
+      }
+      appendImageAttachments(imagePaths)
+      setNotice(null)
+      requestAnimationFrame(() => textareaRef.current?.focus())
+    },
+    [appendImageAttachments, setNotice, textareaRef]
+  )
+
   return {
     imageAttachments,
     appendImageAttachments,
     attachLocalPaths,
+    attachHostResolvedImagePaths,
     clearImageAttachments: () => updateImageAttachments(() => []),
     removeImageAttachment: (id) =>
       updateImageAttachments((prev) => prev.filter((attachment) => attachment.id !== id))

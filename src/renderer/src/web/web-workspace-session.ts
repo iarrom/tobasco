@@ -13,6 +13,7 @@ export function sanitizeWebRuntimeWorkspaceSession(
     activeRepoId: session.activeRepoId ?? null,
     activeWorktreeId: session.activeWorktreeId ?? null,
     browserUrlHistory: session.browserUrlHistory ?? defaults.browserUrlHistory,
+    bookmarks: session.bookmarks ?? defaults.bookmarks,
     lastVisitedAtByWorktreeId: session.lastVisitedAtByWorktreeId
   }
 }

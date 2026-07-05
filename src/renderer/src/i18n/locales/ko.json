@@ -12325,7 +12325,33 @@
         "noSkills": "어울리는 스킬 없음",
         "localAttachmentUnsupported": "원격 세션에는 로컬 첨부 파일을 사용할 수 없습니다.",
         "removeAttachment": "첨부파일 삭제",
-        "pastedImageLabel": "붙여넣은 이미지"
+        "pastedImageLabel": "붙여넣은 이미지",
+        "openImagePreview": "Open image preview",
+        "addMenu": {
+          "trigger": "Add context",
+          "image": "Image",
+          "skills": "Skills",
+          "noSkills": "No skills found",
+          "mcpServers": "MCP Servers",
+          "noMcpServers": "No MCP servers configured"
+        },
+        "planMode": {
+          "enable": "Plan",
+          "disable": "Turn off Plan",
+          "active": "Plan"
+        },
+        "dropImage": "Drop image to attach",
+        "imagePreview": "Image preview",
+        "closePreview": "Close preview",
+        "model": {
+          "modelsHeader": "Models",
+          "optionsHeader": "Options",
+          "thinking": "Thinking",
+          "fast": "Fast",
+          "contextHeader": "Context",
+          "effortHeader": "Effort"
+        },
+        "planPlaceholder": "Plan and design before building…"
       },
       "tool": {
         "running": "실행 중…",
@@ -12377,6 +12403,50 @@
         "title": "{{value0}}을(를) 허용하시겠습니까?",
         "allow": "허용하다",
         "deny": "부인하다"
+      },
+      "thought": {
+        "briefly": "briefly",
+        "forSeconds": "for {{count}}s",
+        "forMinutes": "for {{count}}m",
+        "active": "Thinking…",
+        "done": "Thought"
+      },
+      "plan": {
+        "creating": "Creating plan…",
+        "created": "Created plan",
+        "reviewTitle": "Review Plan",
+        "dismiss": "Dismiss plan",
+        "build": "Build",
+        "buildModel": "Build model",
+        "tab": {
+          "menu": "Plan menu",
+          "editSource": "Edit source",
+          "viewRendered": "View rendered",
+          "copyPath": "Copy path"
+        }
+      },
+      "workedFor": "Worked for {{duration}}",
+      "worked": "Worked",
+      "queue": {
+        "imageOnly": "Image attachment",
+        "imagesBadge": "img",
+        "edit": "Edit message",
+        "sendNow": "Send now",
+        "remove": "Remove from queue"
+      },
+      "slash": {
+        "skills": "Skills",
+        "commands": "Commands",
+        "modes": "Modes",
+        "modeOn": "on",
+        "planMode": "Plan",
+        "planModeDescription": "Research and write a plan before coding"
+      },
+      "subagent": {
+        "verb": "Agent",
+        "background": "background",
+        "emptyTranscript": "No sub-agent activity recorded yet.",
+        "loading": "Loading…"
       }
     },
     "tab": {
@@ -12397,6 +12467,26 @@
           "githubPullRequestNumber": "PR #{{value0}}"
         }
       }
+    },
+    "browser": {
+      "toolbar": {
+        "toggleBookmarks": "북마크 바 표시 전환",
+        "addBookmark": "북마크 추가",
+        "removeBookmark": "북마크 제거",
+        "design": "Design"
+      },
+      "bookmarks": {
+        "open": "열기",
+        "openExternal": "기본 브라우저에서 열기",
+        "rename": "이름 바꾸기",
+        "remove": "제거"
+      }
+    },
+    "tab-bar": {
+      "newBrowserTab": "New Browser Tab"
+    },
+    "tab-group": {
+      "toggleRightSidebar": "Toggle right sidebar"
     }
   }
 }

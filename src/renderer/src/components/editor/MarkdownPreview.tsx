@@ -71,6 +71,7 @@ import { usePreserveSectionDuringExternalEdit } from './usePreserveSectionDuring
 import { openHttpLink } from '@/lib/http-link-routing'
 import { getShortcutPlatform } from '@/lib/shortcut-platform'
 import { isLocalPathOpenBlocked, showLocalPathOpenBlockedToast } from '@/lib/local-path-open-guard'
+import { matchMarkdownInlineFileReference } from './markdown-inline-file-reference'
 import { markdownPreviewUrlTransform } from './markdown-preview-url-transform'
 import { prewarmMarkdownPreviewLocalImages } from './markdown-preview-local-images'
 import { settingsForRuntimeOwner } from '@/runtime/runtime-rpc-client'
@@ -1531,6 +1532,54 @@ export default function MarkdownPreview({
           return (
             <MermaidBlock content={String(children).trimEnd()} isDark={isDark} htmlLabels={false} />
           )
+        }
+        // [FORK] Inline code naming a repo file renders as a blue clickable chip
+        // that opens the file (with optional :line reveal) via the same routing
+        // as markdown links. Fenced blocks carry a language- class and skip this.
+        if (!className && worktreeRoot && sourceRoutingWorktreeId) {
+          const text =
+            typeof children === 'string'
+              ? children
+              : Array.isArray(children) && children.length === 1 && typeof children[0] === 'string'
+                ? children[0]
+                : null
+          const fileReference = text ? matchMarkdownInlineFileReference(text) : null
+          if (fileReference) {
+            const lineSuffix =
+              fileReference.line !== undefined
+                ? `:${fileReference.line}${fileReference.column !== undefined ? `:${fileReference.column}` : ''}`
+                : ''
+            const openReference = (): void => {
+              void activateMarkdownLink(`${worktreeRoot}/${fileReference.path}${lineSuffix}`, {
+                sourceFilePath: filePath,
+                worktreeId: sourceRoutingWorktreeId,
+                worktreeRoot,
+                runtimeEnvironmentId: resolvedSourceRuntimeEnvironmentId
+              })
+            }
+            return (
+              <code
+                {...props}
+                className="markdown-file-reference"
+                role="link"
+                tabIndex={0}
+                title={fileReference.path}
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  openReference()
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    openReference()
+                  }
+                }}
+              >
+                {children}
+              </code>
+            )
+          }
         }
         return (
           <code className={className} {...props}>

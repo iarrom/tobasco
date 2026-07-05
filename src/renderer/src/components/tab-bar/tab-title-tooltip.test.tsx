@@ -188,11 +188,11 @@ function textSpanHtml(markup: string, text: string): string {
 
 function expectTabContainerWidth(markup: string, root: string): void {
   const container = firstOpeningTag(markup)
-  const widthClasses = 'min-w-[88px] max-w-[280px] flex-[1_1_180px] min-[1280px]:flex-[1_1_220px]'
+  // [FORK] Cursor-style chips: content-sized tabs (auto basis) with a shrink floor.
+  const widthClasses = 'flex min-w-[64px] max-w-[220px] flex-[0_1_auto]'
   expect(container).toContain(widthClasses)
-  expect(root).not.toContain('min-w-[88px]')
-  expect(root).not.toContain('max-w-[280px]')
-  expect(root).not.toContain('flex-[1_1_180px]')
+  expect(root).not.toContain('min-w-[64px]')
+  expect(root).not.toContain('max-w-[220px]')
 }
 
 function expectTooltipContent(markup: string, text: string): void {

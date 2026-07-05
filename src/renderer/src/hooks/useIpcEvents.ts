@@ -547,6 +547,7 @@ async function applyRemoteWorkspaceSnapshot(
     store.hydrateTabsSession(merged)
     store.hydrateEditorSession(merged)
     store.hydrateBrowserSession(merged)
+    store.hydrateBookmarks(merged)
     store.markRemoteWorkspaceHydrated(targetId)
     store.setRemoteWorkspaceSyncStatus(targetId, {
       phase: 'synced',

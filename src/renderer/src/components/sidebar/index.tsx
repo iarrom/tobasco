@@ -22,7 +22,9 @@ const RemoveFolderDialog = lazyWithRetry(() => import('./RemoveFolderDialog'))
 const WorktreeVisibilityDialog = lazyWithRetry(() => import('./WorktreeVisibilityDialog'))
 const OrcaYamlTrustDialog = lazyWithRetry(() => import('./OrcaYamlTrustDialog'))
 
-const MIN_WIDTH = 220
+// [FORK] 180 (upstream 220): with the titlebar app name removed the strip fits,
+// letting the sidebar compress further like Cursor's.
+const MIN_WIDTH = 180
 const MAX_WIDTH = 500
 // Why: match the right sidebar's 4px resize target; a 1px seam is too hard to acquire.
 export const WORKTREE_SIDEBAR_RESIZE_HANDLE_CLASS_NAME =

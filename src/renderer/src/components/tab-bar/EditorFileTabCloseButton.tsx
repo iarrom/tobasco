@@ -6,11 +6,11 @@ import { translate } from '@/i18n/i18n'
 
 export function EditorFileTabCloseButton({
   fileIsDirty,
-  showsSelectionChrome,
   onClose
 }: {
   fileIsDirty: boolean
-  showsSelectionChrome: boolean
+  /** Unused since the fork's Cursor-style chips reveal close on hover only. */
+  showsSelectionChrome?: boolean
   onClose: () => void
 }): React.JSX.Element {
   const closeShortcut = useShortcutKeyDetails('tab.close')
@@ -19,12 +19,12 @@ export function EditorFileTabCloseButton({
     <Tooltip>
       <TooltipTrigger asChild>
         <button
+          // [FORK] Cursor-style: hover-revealed close on the active tab too;
+          // dirty tabs keep swapping the dot for the close on hover.
           className={`flex items-center justify-center w-4 h-4 rounded-sm ${
             fileIsDirty
               ? 'hidden group-hover:flex text-muted-foreground hover:text-foreground hover:bg-muted'
-              : showsSelectionChrome
-                ? 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                : 'text-transparent group-hover:text-muted-foreground hover:!text-foreground hover:!bg-muted'
+              : 'text-transparent group-hover:text-muted-foreground hover:!text-foreground hover:!bg-muted'
           }`}
           type="button"
           // Why: simulator unified tabs reuse this tab chrome, so E2E needs

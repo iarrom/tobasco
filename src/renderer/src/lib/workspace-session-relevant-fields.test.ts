@@ -22,6 +22,7 @@ describe('SESSION_RELEVANT_FIELDS', () => {
     browserPagesByWorkspace: true,
     activeBrowserTabIdByWorktree: true,
     browserUrlHistory: true,
+    bookmarks: true,
     unifiedTabsByWorktree: true,
     groupsByWorktree: true,
     layoutByWorktree: true,

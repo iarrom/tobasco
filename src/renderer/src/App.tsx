@@ -35,12 +35,6 @@ import { buildAppFontFamily } from '@/lib/app-font-family'
 import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger
-} from '@/components/ui/context-menu'
 import { useAppStore } from './store'
 import { useShallow } from 'zustand/react/shallow'
 import { isRemoteWorkspaceSnapshotApplyInProgress, useIpcEvents } from './hooks/useIpcEvents'
@@ -419,6 +413,7 @@ function App(): React.JSX.Element {
       hydrateTabsSession: s.hydrateTabsSession,
       hydrateEditorSession: s.hydrateEditorSession,
       hydrateBrowserSession: s.hydrateBrowserSession,
+      hydrateBookmarks: s.hydrateBookmarks,
       fetchBrowserSessionProfiles: s.fetchBrowserSessionProfiles,
       reconnectPersistedTerminals: s.reconnectPersistedTerminals,
       setDeferredSshReconnectTargets: s.setDeferredSshReconnectTargets,
@@ -895,6 +890,7 @@ function App(): React.JSX.Element {
             actions.hydrateTabsSession(session)
             actions.hydrateEditorSession(session)
             actions.hydrateBrowserSession(session)
+            actions.hydrateBookmarks(session)
           })
           // Why: prune lastVisitedAtByWorktreeId entries whose worktrees
           // no longer exist. Must run AFTER hydration — before this point,
@@ -1943,33 +1939,8 @@ function App(): React.JSX.Element {
         ) : (
           <div className="pl-2" />
         )}
-        {showSidebar && !hasCustomTitleBar && (
-          <>
-            {settings?.showTitlebarAppName !== false && (
-              <ContextMenu>
-                <ContextMenuTrigger asChild>
-                  <div
-                    className="titlebar-app-name"
-                    aria-label={translate('auto.App.5096cbbc86', 'Orca')}
-                  >
-                    <span className="titlebar-app-name-main">
-                      {translate('auto.App.5096cbbc86', 'Orca')}
-                    </span>
-                  </div>
-                </ContextMenuTrigger>
-                <ContextMenuContent>
-                  <ContextMenuItem
-                    onSelect={() => {
-                      void actions.updateSettings({ showTitlebarAppName: false })
-                    }}
-                  >
-                    {translate('auto.App.e81217c1b7', 'Hide App Name')}
-                  </ContextMenuItem>
-                </ContextMenuContent>
-              </ContextMenu>
-            )}
-          </>
-        )}
+        {/* [FORK] No "Orca" app name in the titlebar (Cursor parity) — frees the
+            strip so the sidebar can compress further. */}
         {showSidebar && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -2056,11 +2027,15 @@ function App(): React.JSX.Element {
     <Tooltip>
       <TooltipTrigger asChild>
         <button
-          className="sidebar-toggle mr-2"
+          // [FORK] Mirror the tab-bar "+" button 1:1 (24px ghost, same hover) so
+          // the pair reads as one cluster at the row's right edge. mr-1.5 lines
+          // up with the tab row's pr-1.5.
+          className="mr-1.5 flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           onClick={actions.toggleRightSidebar}
           aria-label={translate('auto.App.9e0b441a91', 'Toggle right sidebar')}
         >
-          <PanelRight size={16} />
+          <PanelRight className="size-3.5" />
         </button>
       </TooltipTrigger>
       <TooltipContent side="bottom" sideOffset={6}>
@@ -2285,32 +2260,10 @@ function App(): React.JSX.Element {
                         <div className="titlebar">{titlebarMainStrip}</div>
                       ) : null}
                       <div className="relative flex flex-1 min-w-0 min-h-0 overflow-hidden">
-                        {/* Why: right sidebar toggle floats at the top-right of the center
-                    column so it's always accessible whether the right sidebar is
-                    open or closed. Match the RightSidebar header's 36px height and
-                    top-0 anchor so the icon's vertical center is identical between
-                    open and closed states — otherwise toggling makes the icon jump
-                    a few pixels, which reads as layout jitter. */}
-                        {workspaceChromeActive && !rightSidebarOpen && (
-                          <div
-                            className="absolute top-0 z-10 flex items-center h-[36px]"
-                            style={
-                              {
-                                // Why: right: var(--window-controls-width) is the single
-                                // mechanism that keeps the toggle clear of the
-                                // fixed-position window-controls overlay on custom desktop
-                                // chrome (138px) and sits at the right edge otherwise (0px).
-                                // No internal spacer needed — adding one would push the button
-                                // a further 138px to the left and cover the pane-actions
-                                // Ellipsis button with an un-clickable div.
-                                right: 'var(--window-controls-width)',
-                                WebkitAppRegion: 'no-drag'
-                              } as React.CSSProperties
-                            }
-                          >
-                            {rightSidebarToggle}
-                          </div>
-                        )}
+                        {/* [FORK] The closed-state right-sidebar toggle renders
+                    inline in the top-right tab row (TabGroupPanel) so it shares
+                    the "+" button's row and geometry — the floating overlay copy
+                    that used to sit here drifted from it. */}
                         <div className="flex flex-1 min-w-0 min-h-0 flex-col">
                           {shouldMountTerminalWorkbench ? (
                             <div

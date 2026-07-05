@@ -20,6 +20,7 @@ import type {
 import { isValidTerminalTabId } from './terminal-tab-id'
 import { isTuiAgent } from './tui-agent-config'
 import { normalizeBrowserHistoryEntries } from './workspace-session-browser-history'
+import { normalizeBookmarks } from './bookmarks'
 import { isWorkspaceKey } from './workspace-scope'
 import { sleepingAgentSessionsByPaneKeySchema } from './workspace-session-sleeping-agents'
 
@@ -234,6 +235,19 @@ const browserHistoryEntriesSchema = z
   .array(browserHistoryEntrySchema)
   .transform((entries) => normalizeBrowserHistoryEntries(entries))
 
+// [FORK] Bookmarks bar entries. Parse leniently — normalizeBookmarks drops
+// malformed entries and re-indexes rather than failing the whole session.
+const bookmarkSchema = z.object({
+  id: z.string(),
+  url: z.string(),
+  title: z.string(),
+  faviconUrl: z.string().nullable(),
+  createdAt: z.number(),
+  sortOrder: z.number()
+})
+
+const bookmarksSchema = z.array(bookmarkSchema).transform((entries) => normalizeBookmarks(entries))
+
 // ─── Workspace session ──────────────────────────────────────────────
 
 export const workspaceSessionStateSchema: z.ZodType<WorkspaceSessionState> = z.object({
@@ -252,6 +266,7 @@ export const workspaceSessionStateSchema: z.ZodType<WorkspaceSessionState> = z.o
   activeBrowserTabIdByWorktree: z.record(z.string(), z.string().nullable()).optional(),
   activeTabTypeByWorktree: z.record(z.string(), workspaceVisibleTabTypeSchema).optional(),
   browserUrlHistory: browserHistoryEntriesSchema.optional(),
+  bookmarks: bookmarksSchema.optional(),
   activeTabIdByWorktree: z.record(z.string(), z.string().nullable()).optional(),
   unifiedTabs: z.record(z.string(), z.array(tabSchema)).optional(),
   tabGroups: z.record(z.string(), z.array(tabGroupSchema)).optional(),

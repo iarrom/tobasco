@@ -4,6 +4,10 @@ import { findWorktreeById } from '@/store/slices/worktree-helpers'
 import type { OpenFile } from '@/store/slices/editor'
 import { EditorContent } from './EditorContent'
 import { EditorPanelHeader } from './EditorPanelHeader'
+// [FORK] Plan tabs opened from the native chat swap the standard header for
+// Cursor-style plan chrome (breadcrumb + model picker + Build).
+import { PlanTabHeader } from './PlanTabHeader'
+import { usePlanTabContext } from '@/lib/plan-tab-registry'
 import { UntitledFileRenameDialog } from './UntitledFileRenameDialog'
 import type { getEditorPanelRenderModel } from './editor-panel-render-model'
 import type { DiffContent, FileContent } from './editor-panel-content-types'
@@ -92,43 +96,54 @@ export function EditorPanelShell({
   onRenameConfirm,
   markdownAnnotationsEnabled
 }: EditorPanelShellProps): JSX.Element {
+  // [FORK] Non-null only for plan documents the native chat registered this
+  // session; anything else keeps the standard editor header.
+  const planTabContext = usePlanTabContext(activeFile.filePath)
   return (
     <div ref={panelRef} className="flex flex-col flex-1 min-w-0 min-h-0">
-      {!model.isCombinedDiff && activeFile.mode !== 'check-details' && (
-        <EditorPanelHeader
-          activeFile={activeFile}
-          copiedPathVisible={copiedPathVisible}
-          isSingleDiff={model.isSingleDiff}
-          isDiffSurface={model.isDiffSurface}
-          isMarkdown={model.isMarkdown}
-          isCsv={model.isCsv}
-          isNotebook={model.isNotebook}
-          hasEditorToggle={model.hasEditorToggle}
-          availableEditorToggleModes={model.availableEditorToggleModes}
-          effectiveToggleValue={model.effectiveToggleValue}
-          canOpenPreviewToSide={model.canOpenPreviewToSide}
-          canShowMarkdownPreview={model.canShowMarkdownPreview}
-          canShowMarkdownTableOfContents={model.canShowMarkdownTableOfContents}
-          isMarkdownTableOfContentsDisabled={model.isMarkdownTableOfContentsDisabled}
-          shouldShowMarkdownExportAction={model.shouldShowMarkdownExportAction}
-          canExportMarkdownToPdf={model.canExportMarkdownToPdf}
-          showMarkdownTableOfContents={showMarkdownTableOfContents}
-          canShowMarkdownFrontmatterToggle={canShowMarkdownFrontmatterToggle}
-          markdownFrontmatterVisible={markdownFrontmatterVisible}
-          sideBySide={sideBySide}
-          openFileState={model.openFileState}
-          onCopyPath={onCopyPath}
-          onOpenDiffTargetFile={onOpenDiffTargetFile}
-          onOpenPreviewToSide={onOpenPreviewToSide}
-          onOpenMarkdownPreview={onOpenMarkdownPreview}
-          onOpenContainingFolder={onOpenContainingFolder}
-          onToggleSideBySide={onToggleSideBySide}
-          onEditorToggleChange={onEditorToggleChange}
-          onToggleMarkdownTableOfContents={onToggleMarkdownTableOfContents}
-          onToggleMarkdownFrontmatter={onToggleMarkdownFrontmatter}
-          onExportMarkdownToPdf={onExportMarkdownToPdf}
-        />
-      )}
+      {!model.isCombinedDiff &&
+        activeFile.mode !== 'check-details' &&
+        planTabContext !== null &&
+        model.isMarkdown && (
+          <PlanTabHeader context={planTabContext} filePath={activeFile.filePath} />
+        )}
+      {!model.isCombinedDiff &&
+        activeFile.mode !== 'check-details' &&
+        (planTabContext === null || !model.isMarkdown) && (
+          <EditorPanelHeader
+            activeFile={activeFile}
+            copiedPathVisible={copiedPathVisible}
+            isSingleDiff={model.isSingleDiff}
+            isDiffSurface={model.isDiffSurface}
+            isMarkdown={model.isMarkdown}
+            isCsv={model.isCsv}
+            isNotebook={model.isNotebook}
+            hasEditorToggle={model.hasEditorToggle}
+            availableEditorToggleModes={model.availableEditorToggleModes}
+            effectiveToggleValue={model.effectiveToggleValue}
+            canOpenPreviewToSide={model.canOpenPreviewToSide}
+            canShowMarkdownPreview={model.canShowMarkdownPreview}
+            canShowMarkdownTableOfContents={model.canShowMarkdownTableOfContents}
+            isMarkdownTableOfContentsDisabled={model.isMarkdownTableOfContentsDisabled}
+            shouldShowMarkdownExportAction={model.shouldShowMarkdownExportAction}
+            canExportMarkdownToPdf={model.canExportMarkdownToPdf}
+            showMarkdownTableOfContents={showMarkdownTableOfContents}
+            canShowMarkdownFrontmatterToggle={canShowMarkdownFrontmatterToggle}
+            markdownFrontmatterVisible={markdownFrontmatterVisible}
+            sideBySide={sideBySide}
+            openFileState={model.openFileState}
+            onCopyPath={onCopyPath}
+            onOpenDiffTargetFile={onOpenDiffTargetFile}
+            onOpenPreviewToSide={onOpenPreviewToSide}
+            onOpenMarkdownPreview={onOpenMarkdownPreview}
+            onOpenContainingFolder={onOpenContainingFolder}
+            onToggleSideBySide={onToggleSideBySide}
+            onEditorToggleChange={onEditorToggleChange}
+            onToggleMarkdownTableOfContents={onToggleMarkdownTableOfContents}
+            onToggleMarkdownFrontmatter={onToggleMarkdownFrontmatter}
+            onExportMarkdownToPdf={onExportMarkdownToPdf}
+          />
+        )}
       <Suspense fallback={<EditorLoadingFallback />}>
         <EditorContent
           activeFile={activeFile}

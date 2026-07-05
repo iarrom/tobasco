@@ -4,13 +4,26 @@ import type { AgentType } from '../../../../shared/agent-status-types'
 import { resolveImagePaste } from './native-chat-image-paste'
 import { NATIVE_CHAT_CONTEXT_PASTE_MAX_BYTES } from './native-chat-composer-target'
 
+/** Host the pasted image must be written to. For an SSH pane `connectionId` names
+ *  the remote target so the temp file lands on the agent's host (via SFTP); both
+ *  are null for a local pane. Resolved lazily at paste time so a mid-session
+ *  connection change is always reflected. */
+export type NativeChatImagePasteTarget = {
+  connectionId: string | null
+  runtimeEnvironmentId: string | null
+}
+
 export type UseNativeChatComposerPasteArgs = {
   agent: AgentType
   /** Live composer-disabled state (no pty / presence-lock); read at await-resume
    *  via a ref so a flip mid-paste doesn't write into a guarded composer. */
   disabled: boolean
   caret: number
-  attachLocalPaths: (paths: string[]) => void
+  /** Attach an image path already written to the agent's host (local temp or the
+   *  remote /tmp for SSH), bypassing the local-only refusal in attachLocalPaths. */
+  attachHostResolvedImagePaths: (paths: string[]) => void
+  /** Resolve the write target for a clipboard image — remote for SSH panes. */
+  resolveImagePasteTarget: () => NativeChatImagePasteTarget
   insertTypedText: (text: string) => boolean
   setCaret: (caret: number) => void
   setNotice: (notice: string | null) => void
@@ -44,7 +57,8 @@ export function useNativeChatComposerPaste({
   agent,
   disabled,
   caret,
-  attachLocalPaths,
+  attachHostResolvedImagePaths,
+  resolveImagePasteTarget,
   insertTypedText,
   setCaret,
   setNotice
@@ -58,6 +72,21 @@ export function useNativeChatComposerPaste({
   const disabledRef = useRef(disabled)
   disabledRef.current = disabled
 
+  // Read the write target lazily via a ref so the async paste round-trip always
+  // uses the current connection (an SSH pane needs the image on the remote host).
+  const resolveImagePasteTargetRef = useRef(resolveImagePasteTarget)
+  resolveImagePasteTargetRef.current = resolveImagePasteTarget
+
+  const saveClipboardImageAsTempFile = useCallback((): Promise<string | null> => {
+    const target = resolveImagePasteTargetRef.current()
+    return window.api.ui
+      .saveClipboardImageAsTempFile({
+        connectionId: target.connectionId,
+        runtimeEnvironmentId: target.runtimeEnvironmentId
+      })
+      .catch(() => null)
+  }, [])
+
   const attachClipboardImageTempFile = useCallback(
     (tempPath: string) => {
       const result = resolveImagePaste(agent, tempPath)
@@ -70,10 +99,10 @@ export function useNativeChatComposerPaste({
         )
         return
       }
-      attachLocalPaths([result.path])
+      attachHostResolvedImagePaths([result.path])
       setNotice(null)
     },
-    [agent, attachLocalPaths, setNotice]
+    [agent, attachHostResolvedImagePaths, setNotice]
   )
 
   const handlePaste = useCallback(
@@ -95,7 +124,7 @@ export function useNativeChatComposerPaste({
       // state can move (further typing/selection) while the await is in flight.
       const caretAtPaste = caret
       void (async () => {
-        const tempPath = await window.api.ui.saveClipboardImageAsTempFile().catch(() => null)
+        const tempPath = await saveClipboardImageAsTempFile()
         if (!tempPath || disabledRef.current) {
           return
         }
@@ -103,12 +132,12 @@ export function useNativeChatComposerPaste({
         setCaret(caretAtPaste)
       })()
     },
-    [attachClipboardImageTempFile, caret, setCaret]
+    [attachClipboardImageTempFile, caret, saveClipboardImageAsTempFile, setCaret]
   )
 
   const pasteFromClipboard = useCallback(() => {
     void (async () => {
-      const tempPath = await window.api.ui.saveClipboardImageAsTempFile().catch(() => null)
+      const tempPath = await saveClipboardImageAsTempFile()
       if (disabledRef.current) {
         return
       }
@@ -126,7 +155,7 @@ export function useNativeChatComposerPaste({
         insertTypedText(text)
       }
     })()
-  }, [attachClipboardImageTempFile, insertTypedText])
+  }, [attachClipboardImageTempFile, insertTypedText, saveClipboardImageAsTempFile])
 
   return { handlePaste, pasteFromClipboard }
 }

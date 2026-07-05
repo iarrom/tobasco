@@ -1,6 +1,10 @@
 import { translate } from '@/i18n/i18n'
 import { isRemoteRuntimePtyId } from '@/runtime/runtime-terminal-inspection'
 import type { getSettingsForAgentTabRuntimeOwner } from '@/lib/agent-paste-draft'
+import type { AppState } from '@/store/types'
+import { getConnectionIdFromState } from '@/lib/connection-context'
+import { resolveNativeChatFileLinkContext } from './native-chat-file-link'
+import type { NativeChatImagePasteTarget } from './use-native-chat-composer-paste'
 
 export type NativeChatResolvedTarget = {
   ptyId: string
@@ -26,6 +30,21 @@ export function nativeChatComposerPlaceholder(hasPty: boolean, canSend: boolean)
 
 export function nativeChatComposerTargetIsRemote(ptyId: string | null): boolean {
   return ptyId !== null && isRemoteRuntimePtyId(ptyId)
+}
+
+/** Resolve the host a clipboard-pasted image must be written to. For an SSH pane
+ *  the image has to land on the remote host (the agent reads it there), so this
+ *  returns the worktree's connectionId — otherwise a local temp path would name a
+ *  file the remote agent can't open and the paste would be lost. */
+export function resolveNativeChatImagePasteTarget(
+  state: AppState,
+  terminalTabId: string
+): NativeChatImagePasteTarget {
+  const context = resolveNativeChatFileLinkContext(state, terminalTabId)
+  return {
+    connectionId: getConnectionIdFromState(state, context?.worktreeId ?? null) ?? null,
+    runtimeEnvironmentId: context?.runtimeEnvironmentId ?? null
+  }
 }
 
 export function formatNativeChatFileReference(filePath: string): string {

@@ -1,103 +1,78 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, Image as ImageIcon } from 'lucide-react'
-import CommentMarkdown, {
-  type CommentMarkdownLinkClickHandler
-} from '@/components/sidebar/CommentMarkdown'
+import { ArrowDown, ListChecks } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { CommentMarkdownLinkClickHandler } from '@/components/sidebar/CommentMarkdown'
 import { translate } from '@/i18n/i18n'
-import { basename } from '@/lib/path'
-import {
-  isTextBlock,
-  type NativeChatBlock,
-  type NativeChatMessage
-} from '../../../../shared/native-chat-types'
 import type { NativeChatLiveSession } from './use-native-chat-live-session'
 import { orderNativeChatMessages } from './native-chat-message-grouping'
 import { stripNoiseMessages } from './native-chat-noise'
 import { foldToolMessages, splitNativeChatBlocks } from './native-chat-tool-fold'
 import { isNearBottom, shouldShowJumpToLatest, type ScrollGeometry } from './native-chat-autoscroll'
-import { isNativeChatPastedImagePath } from './native-chat-image-paste'
-import { NativeChatToolRun } from './NativeChatToolRun'
-import { NativeChatCopyButton } from './NativeChatCopyButton'
+import { MessageRow } from './NativeChatMessageRow'
+import { NativeChatWorkGroup } from './NativeChatWorkGroup'
+import { buildNativeChatTurnGroups } from './native-chat-turn-groups'
 import { NATIVE_CHAT_STREAMING_ID } from '../../../../shared/native-chat-streaming'
+
+/** Trailing muted descriptor for a finished "Thought" step, derived from the
+ *  gap between the reasoning message and the turn's next message. */
+function formatThoughtDuration(start: number | null, end: number | null | undefined): string {
+  if (typeof start !== 'number' || typeof end !== 'number' || end <= start) {
+    return translate('components.native-chat.thought.briefly', 'briefly')
+  }
+  const seconds = Math.round((end - start) / 1000)
+  if (seconds < 2) {
+    return translate('components.native-chat.thought.briefly', 'briefly')
+  }
+  if (seconds < 60) {
+    return translate('components.native-chat.thought.forSeconds', 'for {{count}}s', {
+      count: seconds
+    })
+  }
+  return translate('components.native-chat.thought.forMinutes', 'for {{count}}m', {
+    count: Math.round(seconds / 60)
+  })
+}
 
 function geometryOf(el: HTMLElement): ScrollGeometry {
   return { scrollTop: el.scrollTop, scrollHeight: el.scrollHeight, clientHeight: el.clientHeight }
 }
 
-function proseToMarkdown(blocks: NativeChatBlock[]): string {
-  return blocks
-    .map((block) => {
-      if (isTextBlock(block)) {
-        return block.text
-      }
-      return ''
-    })
-    .filter((part) => part.length > 0)
-    .join('\n\n')
-}
-
-function ImageAttachmentRefs({ blocks }: { blocks: NativeChatBlock[] }): React.JSX.Element | null {
-  const images = blocks.filter((block) => block.type === 'image-ref')
-  if (images.length === 0) {
-    return null
-  }
-  return (
-    <div className="mb-2 flex flex-wrap gap-1.5">
-      {images.map((image, index) => {
-        const label = image.alt ?? image.path ?? image.url ?? 'Image'
-        const name =
-          image.path && isNativeChatPastedImagePath(image.path)
-            ? translate('components.native-chat.composer.pastedImageLabel', 'Pasted image')
-            : image.path
-              ? basename(image.path)
-              : label
-        return (
-          <div
-            key={`${label}-${index}`}
-            className="flex max-w-full items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground"
-            title={label}
-          >
-            <ImageIcon className="size-3.5 shrink-0" />
-            <span className="truncate">{name}</span>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-/** Inline controls for an agent message (mobile AgentControls parity): copy the
- *  message's prose, and scroll so this message's top aligns to the viewport top.
- *  Reveals on hover / keyboard focus like the prior copy affordance. */
-function AgentControls({
-  markdown,
-  onScrollToTop,
-  className
+/** [FORK] Plan-mode status line shown after the turn's "Worked for…" summary:
+ *  "Creating plan…" shimmers while the plan turn runs; "Created plan" is a muted
+ *  affordance that opens the plan tab once the plan file is written. */
+function NativeChatPlanStatusLine({
+  status,
+  onOpen
 }: {
-  markdown: string
-  onScrollToTop: () => void
-  className?: string
+  status: 'creating' | 'created'
+  onOpen?: () => void
 }): React.JSX.Element {
-  return (
-    <div className={cn('flex items-center gap-1', className)}>
-      <NativeChatCopyButton text={markdown} />
+  const label =
+    status === 'creating'
+      ? translate('components.native-chat.plan.creating', 'Creating plan…')
+      : translate('components.native-chat.plan.created', 'Created plan')
+  const content = (
+    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <ListChecks className="size-3.5 shrink-0" />
+      <span className={cn(status === 'creating' && 'native-chat-step-shimmer')}>{label}</span>
+    </span>
+  )
+  if (status === 'created' && onOpen) {
+    return (
       <button
         type="button"
-        onClick={onScrollToTop}
-        aria-label={translate(
-          'components.native-chat.scrollMessageToTop',
-          'Scroll this message to top'
-        )}
-        title={translate('components.native-chat.scrollMessageToTop', 'Scroll this message to top')}
-        className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={onOpen}
+        className="flex w-fit items-center rounded-md py-0.5 text-left transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <ArrowUp className="size-3.5" />
+        {content}
       </button>
-    </div>
-  )
+    )
+  }
+  return <div className="py-0.5">{content}</div>
 }
 
+// [FORK] Shimmering muted "Thinking…" label instead of the stock bouncing dots,
+// matching the active thought-step treatment.
 function TypingIndicatorRow(): React.JSX.Element {
   return (
     <div
@@ -105,118 +80,11 @@ function TypingIndicatorRow(): React.JSX.Element {
       aria-label={translate('components.native-chat.status.responding', 'Agent is responding')}
       aria-live="polite"
     >
-      <div className="flex h-8 items-center gap-1.5 text-muted-foreground">
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className="size-1.5 animate-bounce rounded-full bg-muted-foreground/70"
-            // Stagger the three dots so they ripple rather than pulse in unison.
-            style={{ animationDelay: `${i * 160}ms` }}
-          />
-        ))}
+      <div className="flex h-8 items-center text-muted-foreground">
+        <span className="native-chat-step-shimmer text-xs font-medium">
+          {translate('components.native-chat.thought.active', 'Thinking…')}
+        </span>
       </div>
-    </div>
-  )
-}
-
-/** One message: its prose first, then a collapsible run folding all of the
- *  turn's tool activity. Monochrome per STYLEGUIDE: user prompts read as a
- *  lifted card, assistant prose as body copy, reasoning de-emphasized. */
-function MessageRow({
-  message,
-  expandSignal,
-  onScrollMessageToTop,
-  onLinkClick,
-  allowFileUriLinks = false
-}: {
-  message: NativeChatMessage
-  expandSignal: boolean
-  /** Align this message's top to the top of the scroll viewport. */
-  onScrollMessageToTop: (el: HTMLElement) => void
-  onLinkClick?: CommentMarkdownLinkClickHandler
-  allowFileUriLinks?: boolean
-}): React.JSX.Element | null {
-  const rowRef = useRef<HTMLDivElement | null>(null)
-  const { prose, tools } = useMemo(() => splitNativeChatBlocks(message.blocks), [message.blocks])
-  const markdown = proseToMarkdown(prose)
-  const hasImages = prose.some((block) => block.type === 'image-ref')
-  const isUser = message.role === 'user'
-  const isReasoning = message.role === 'reasoning'
-  const isSystem = message.role === 'system'
-
-  const scrollToTop = useCallback(() => {
-    if (rowRef.current) {
-      onScrollMessageToTop(rowRef.current)
-    }
-  }, [onScrollMessageToTop])
-
-  // Skip rows with nothing renderable so the transcript shows no empty/ghost
-  // bubble.
-  // After all hooks, so hook order stays unconditional.
-  if (markdown.length === 0 && !hasImages && tools.length === 0) {
-    return null
-  }
-
-  if (isUser) {
-    // Why: an optimistic echo is rendered identically to a real user turn (no
-    // muting, no "Queued" label) so that when the real transcript turn lands and
-    // replaces it, there is no visible state change — the send just appears and
-    // stays. (A distinct "queued" treatment flickered normal→queued→normal as the
-    // transcript caught up.)
-    return (
-      <div ref={rowRef} className="flex flex-col items-end gap-0.5">
-        <div className="max-w-[85%] rounded-xl rounded-tr-sm border border-border bg-card px-3 py-2 text-sm text-card-foreground">
-          {markdown ? (
-            <>
-              <ImageAttachmentRefs blocks={prose} />
-              <CommentMarkdown
-                content={markdown}
-                variant="document"
-                className="text-sm"
-                onLinkClick={onLinkClick}
-                allowFileUriLinks={allowFileUriLinks}
-              />
-            </>
-          ) : (
-            <ImageAttachmentRefs blocks={prose} />
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  // Plain assistant prose is the copyable unit; reasoning/system asides stay
-  // chrome-free. The controls reveal on hover (and on keyboard focus-within).
-  const showControls = !isReasoning && !isSystem && markdown.length > 0
-
-  return (
-    <div
-      ref={rowRef}
-      className={cn(
-        'group relative max-w-full text-sm leading-relaxed text-foreground',
-        // Reasoning is the agent thinking aloud — quieter, italic, like an aside.
-        isReasoning && 'border-l-2 border-border/60 pl-3 italic text-muted-foreground',
-        isSystem && 'text-xs text-muted-foreground'
-      )}
-    >
-      {showControls ? (
-        <AgentControls
-          markdown={markdown}
-          onScrollToTop={scrollToTop}
-          className="absolute -top-1 right-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-        />
-      ) : null}
-      <ImageAttachmentRefs blocks={prose} />
-      {markdown ? (
-        <CommentMarkdown
-          content={markdown}
-          variant="document"
-          className="text-sm"
-          onLinkClick={onLinkClick}
-          allowFileUriLinks={allowFileUriLinks}
-        />
-      ) : null}
-      {tools.length > 0 ? <NativeChatToolRun blocks={tools} expandSignal={expandSignal} /> : null}
     </div>
   )
 }
@@ -224,19 +92,22 @@ function MessageRow({
 export function NativeChatMessageList({
   session,
   isWorking,
-  expandSignal,
   fontScale,
   onLinkClick,
-  allowFileUriLinks = false
+  allowFileUriLinks = false,
+  planStatus = null,
+  onOpenPlan
 }: {
   session: NativeChatLiveSession
   isWorking: boolean
-  /** Toolbar-driven desired open state for every tool run; each flip re-syncs. */
-  expandSignal: boolean
   /** Chat-only text multiplier (1 = default), driven by the zoom shortcuts. */
   fontScale: number
   onLinkClick?: CommentMarkdownLinkClickHandler
   allowFileUriLinks?: boolean
+  /** [FORK] Plan-mode transcript status: shimmering "Creating plan…" while the
+   *  plan turn works, "Created plan" (clickable) once the plan file is written. */
+  planStatus?: 'creating' | 'created' | null
+  onOpenPlan?: () => void
 }): React.JSX.Element {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [stuckToBottom, setStuckToBottom] = useState(true)
@@ -259,8 +130,58 @@ export function NativeChatMessageList({
     () => foldToolMessages(orderNativeChatMessages(stripNoiseMessages(session.messages))),
     [session.messages]
   )
-  const showTypingIndicator =
-    isWorking && !messages.some((message) => message.id === NATIVE_CHAT_STREAMING_ID)
+
+  const hasStreamingBubble = messages.some((message) => message.id === NATIVE_CHAT_STREAMING_ID)
+
+  // The agent's active step is the last transcript message while working, unless
+  // the answer is already streaming (then the streaming bubble leads, no step
+  // shimmers). Drives the shimmer on exactly one step's label; the typing dots
+  // only show when there's no active step to shimmer.
+  const activeStepId = useMemo(() => {
+    if (!isWorking || hasStreamingBubble || messages.length === 0) {
+      return null
+    }
+    const last = messages.at(-1)
+    if (!last) {
+      return null
+    }
+    const { tools } = splitNativeChatBlocks(last.blocks)
+    if (last.role === 'reasoning' || tools.length > 0) {
+      return last.id
+    }
+    return null
+  }, [isWorking, hasStreamingBubble, messages])
+
+  // Duration descriptor for each finished "Thought" step, from the gap to the
+  // turn's next message.
+  const thoughtDurationById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (let i = 0; i < messages.length; i++) {
+      if (messages[i].role === 'reasoning') {
+        map.set(
+          messages[i].id,
+          formatThoughtDuration(messages[i].timestamp, messages[i + 1]?.timestamp)
+        )
+      }
+    }
+    return map
+  }, [messages])
+
+  // Group each agent response's intermediate work so it collapses to a single
+  // "Worked for …" line once the final answer lands (Cursor parity).
+  const groups = useMemo(
+    () => buildNativeChatTurnGroups(messages, { working: isWorking }),
+    [messages, isWorking]
+  )
+
+  // Only the latest user prompt sticks to the top (see MessageRow) — pinning
+  // every user row would stack overlapping headers instead of replacing them.
+  const lastUserMessageId = useMemo(
+    () => messages.findLast((message) => message.role === 'user')?.id ?? null,
+    [messages]
+  )
+
+  const showTypingIndicator = isWorking && !hasStreamingBubble && activeStepId === null
 
   // When an older page prepends, the scroll content grows above the viewport.
   // Capture the pre-render scroll height so the layout effect can restore the
@@ -339,12 +260,16 @@ export function NativeChatMessageList({
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="scrollbar-sleek h-full overflow-y-auto px-3 pt-10 pb-4 sm:px-4"
+        // [FORK] No container padding-top: the sticky user prompt pins flush to
+        // the very top. Initial breathing room lives on the inner column instead
+        // (it scrolls away), so the sticky header sits against the top edge.
+        className="scrollbar-sleek h-full overflow-y-auto px-3 pb-4 sm:px-4"
       >
         <div
           // [FORK] max-w-xl, чтобы лента сообщений совпадала по ширине с композером
-          // (единая центрированная колонка, как в Cursor).
-          className="mx-auto flex w-full max-w-xl flex-col gap-3"
+          // (единая центрированная колонка, как в Cursor). pt-10: верхний отступ
+          // ленты, который прокручивается (в отличие от паддинга контейнера).
+          className="mx-auto flex w-full max-w-xl flex-col gap-3 pt-10"
           // Why: `zoom` scales the chat transcript's text and layout together,
           // scoped to this container so the rest of the app is untouched. It's
           // the desktop analog of the mobile pinch-zoom (Chromium/Electron only).
@@ -364,16 +289,33 @@ export function NativeChatMessageList({
               </button>
             </div>
           ) : null}
-          {messages.map((message) => (
-            <MessageRow
-              key={message.id}
-              message={message}
-              expandSignal={expandSignal}
-              onScrollMessageToTop={scrollMessageToTop}
-              onLinkClick={onLinkClick}
-              allowFileUriLinks={allowFileUriLinks}
-            />
-          ))}
+          {groups.map((group) =>
+            group.kind === 'work' ? (
+              <NativeChatWorkGroup
+                key={group.id}
+                steps={group.steps}
+                live={group.live}
+                durationMs={group.durationMs}
+                activeStepId={activeStepId}
+                thoughtDurationById={thoughtDurationById}
+                onScrollMessageToTop={scrollMessageToTop}
+                onLinkClick={onLinkClick}
+                allowFileUriLinks={allowFileUriLinks}
+              />
+            ) : (
+              <MessageRow
+                key={group.message.id}
+                message={group.message}
+                isActiveStep={false}
+                thoughtDurationLabel=""
+                sticky={group.message.id === lastUserMessageId}
+                onScrollMessageToTop={scrollMessageToTop}
+                onLinkClick={onLinkClick}
+                allowFileUriLinks={allowFileUriLinks}
+              />
+            )
+          )}
+          {planStatus ? <NativeChatPlanStatusLine status={planStatus} onOpen={onOpenPlan} /> : null}
           {showTypingIndicator ? <TypingIndicatorRow /> : null}
         </div>
       </div>

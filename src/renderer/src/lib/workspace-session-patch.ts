@@ -1,6 +1,7 @@
 import type { WorkspaceSessionPatch, WorkspaceSessionState } from '../../../shared/types'
 import { pruneLocalTerminalScrollbackBuffers } from '../../../shared/workspace-session-terminal-buffers'
 import { normalizeBrowserHistoryEntries } from '../../../shared/workspace-session-browser-history'
+import { normalizeBookmarks } from '../../../shared/bookmarks'
 import {
   buildActiveConnectionIdsAtShutdown,
   buildEditorSessionData,
@@ -112,6 +113,9 @@ export function buildWorkspaceSessionPatch(
   }
   if (changed.has('browserUrlHistory')) {
     patch.browserUrlHistory = normalizeBrowserHistoryEntries(snapshot.browserUrlHistory)
+  }
+  if (changed.has('bookmarks')) {
+    patch.bookmarks = normalizeBookmarks(snapshot.bookmarks ?? [])
   }
   if (
     hasAnyChangedField(changed, [
