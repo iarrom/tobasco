@@ -32,8 +32,6 @@ function getRecipeOverrideFieldLabel(field: SourceControlActionRecipeOverrideFie
         'auto.components.settings.SourceControlActionRepoOverrideNote.commandTemplate',
         'Command template'
       )
-    // Why: no default — the exhaustive switch already fails to compile when
-    // the override-field union grows a new variant (missing return path).
   }
 }
 

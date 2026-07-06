@@ -73,7 +73,8 @@ export function MessageRow({
   sticky = false,
   onScrollMessageToTop,
   onLinkClick,
-  allowFileUriLinks = false
+  allowFileUriLinks = false,
+  deliveryFailed = false
 }: {
   message: NativeChatMessage
   /** This row is the agent's currently-running step (shimmer its label). */
@@ -87,6 +88,7 @@ export function MessageRow({
   onScrollMessageToTop: (el: HTMLElement) => void
   onLinkClick?: CommentMarkdownLinkClickHandler
   allowFileUriLinks?: boolean
+  deliveryFailed?: boolean
 }): React.JSX.Element | null {
   const rowRef = useRef<HTMLDivElement | null>(null)
   // Collapse the pinned (sticky) user prompt to 2 lines; click toggles full text.
@@ -208,6 +210,14 @@ export function MessageRow({
             <NativeChatMessageImageAttachments blocks={prose} />
           )}
         </div>
+        {deliveryFailed ? (
+          <div className="max-w-[85%] text-[11px] text-destructive/80">
+            {translate(
+              'components.native-chat.launchPromptNotDelivered',
+              'Not delivered — check the terminal'
+            )}
+          </div>
+        ) : null}
       </div>
     )
   }

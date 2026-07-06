@@ -1425,7 +1425,9 @@ export function useIpcEvents(): void {
                     ...(launchAgent
                       ? {
                           launchAgent,
-                          ...initialAgentTabViewModeProps(store.settings)
+                          ...initialAgentTabViewModeProps(store.settings, {
+                            agent: launchAgent
+                          })
                         }
                       : {}),
                     ...(cwd ? { startupCwd: cwd } : {}),
@@ -1613,7 +1615,9 @@ export function useIpcEvents(): void {
             ? {
                 ...(shouldActivate ? {} : { activate: false, recordInteraction: false }),
                 launchAgent: data.launchAgent,
-                ...initialAgentTabViewModeProps(store.settings),
+                ...initialAgentTabViewModeProps(store.settings, {
+                  agent: data.launchAgent
+                }),
                 ...(data.cwd ? { startupCwd: data.cwd } : {})
               }
             : shouldActivate

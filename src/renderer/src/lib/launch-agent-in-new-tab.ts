@@ -9,7 +9,7 @@ import { CLIENT_PLATFORM } from '@/lib/new-workspace'
 import { getAgentLaunchPlatformForRepo } from '@/lib/agent-launch-platform'
 import { reconcileTabOrder } from '@/components/tab-bar/reconcile-order'
 import { track, tuiAgentToAgentKind } from '@/lib/telemetry'
-import { pasteDraftWhenAgentReady } from '@/lib/agent-paste-draft'
+import { deliverLaunchPromptToAgentTab } from '@/lib/agent-launch-prompt-delivery'
 import { initialAgentTabViewModeProps } from '@/lib/native-chat-initial-view-mode'
 import { getRuntimeEnvironmentIdForWorktree } from '@/lib/worktree-runtime-owner'
 import { getLocalProjectExecutionRuntimeContext } from '@/lib/local-preflight-context'
@@ -22,6 +22,7 @@ import {
   resolveTuiAgentLaunchArgs,
   resolveTuiAgentLaunchEnv
 } from '../../../shared/tui-agent-launch-defaults'
+import { resolveLocalWindowsAgentStartupShell } from '../../../shared/windows-terminal-shell'
 import { TUI_AGENT_CONFIG } from '../../../shared/tui-agent-config'
 import { repoIsRemote } from '../../../shared/agent-launch-remote'
 import { seedCommandCodeSubmittedPromptStatus } from '@/lib/command-code-prompt-status-seed'
@@ -124,12 +125,26 @@ export function launchAgentInNewTab(args: LaunchAgentInNewTabArgs): LaunchAgentI
   // Why: SSH remotes deploy the CLI shim as plain `orca`, so the Linux-only
   // `orca-ide` rename must not be applied for remote launches.
   const isRemote = repo ? repoIsRemote(repo) : false
+  const queuedShell = resolveLocalWindowsAgentStartupShell({
+    platform: resolvedLaunchPlatform,
+    isRemote,
+    terminalWindowsShell: store.settings?.terminalWindowsShell
+  })
   const cmdOverrides = store.settings?.agentCmdOverrides ?? {}
   const effectiveAgentArgs =
     agentArgs !== undefined
       ? agentArgs
       : resolveTuiAgentLaunchArgs(agent, store.settings?.agentDefaultArgs)
   const agentEnv = resolveTuiAgentLaunchEnv(agent, store.settings?.agentDefaultEnv)
+  const startupPlanBase = {
+    agent,
+    cmdOverrides,
+    platform: resolvedLaunchPlatform,
+    shell: queuedShell,
+    isRemote,
+    agentArgs: effectiveAgentArgs,
+    agentEnv
+  }
   const trimmedPrompt = prompt?.trim() ?? ''
   const hasPrompt = trimmedPrompt.length > 0
   const isFollowupPath = TUI_AGENT_CONFIG[agent].promptInjectionMode === 'stdin-after-start'
@@ -148,13 +163,8 @@ export function launchAgentInNewTab(args: LaunchAgentInNewTabArgs): LaunchAgentI
     // Why: generated multi-line prompts are too large to echo through a shell
     // argv/prefill command. Launch cleanly, then paste+submit inside the TUI.
     startupPlan = buildAgentStartupPlan({
-      agent,
+      ...startupPlanBase,
       prompt: '',
-      cmdOverrides,
-      platform: resolvedLaunchPlatform,
-      isRemote,
-      agentArgs: effectiveAgentArgs,
-      agentEnv,
       allowEmptyPromptLaunch: true
     })
     pasteDraftAfterLaunch = trimmedPrompt
@@ -162,13 +172,8 @@ export function launchAgentInNewTab(args: LaunchAgentInNewTabArgs): LaunchAgentI
     forcePasteAfterLaunch = true
   } else if (hasPrompt && promptDelivery === 'draft') {
     const draftLaunchPlan = buildAgentDraftLaunchPlan({
-      agent,
-      draft: trimmedPrompt,
-      cmdOverrides,
-      platform: resolvedLaunchPlatform,
-      isRemote,
-      agentArgs: effectiveAgentArgs,
-      agentEnv
+      ...startupPlanBase,
+      draft: trimmedPrompt
     })
     if (draftLaunchPlan) {
       startupPlan = {
@@ -184,38 +189,23 @@ export function launchAgentInNewTab(args: LaunchAgentInNewTabArgs): LaunchAgentI
       }
     } else {
       startupPlan = buildAgentStartupPlan({
-        agent,
+        ...startupPlanBase,
         prompt: '',
-        cmdOverrides,
-        platform: resolvedLaunchPlatform,
-        isRemote,
-        agentArgs: effectiveAgentArgs,
-        agentEnv,
         allowEmptyPromptLaunch: true
       })
       pasteDraftAfterLaunch = trimmedPrompt
     }
   } else if (hasPrompt && isFollowupPath) {
     startupPlan = buildAgentStartupPlan({
-      agent,
+      ...startupPlanBase,
       prompt: '',
-      cmdOverrides,
-      platform: resolvedLaunchPlatform,
-      isRemote,
-      agentArgs: effectiveAgentArgs,
-      agentEnv,
       allowEmptyPromptLaunch: true
     })
     pasteDraftAfterLaunch = trimmedPrompt
   } else {
     startupPlan = buildAgentStartupPlan({
-      agent,
+      ...startupPlanBase,
       prompt: hasPrompt ? trimmedPrompt : '',
-      cmdOverrides,
-      platform: resolvedLaunchPlatform,
-      isRemote,
-      agentArgs: effectiveAgentArgs,
-      agentEnv,
       allowEmptyPromptLaunch: !hasPrompt
     })
   }
@@ -273,13 +263,24 @@ export function launchAgentInNewTab(args: LaunchAgentInNewTabArgs): LaunchAgentI
   // lands after mount the agent binary never starts; the user sees a bare shell.
   // Since both calls happen synchronously in the same React batch, the queue
   // is in place by the time the pane commits.
+  // Why: the followup path pastes the prompt as an unsubmitted draft (submit
+  // stays false), so gate the initial chat view like a `draft` launch —
+  // otherwise a default `auto-submit` followup would open native chat with no
+  // submitted turn to render.
+  const viewModePromptDelivery =
+    hasPrompt && isFollowupPath && promptDelivery === 'auto-submit' ? 'draft' : promptDelivery
   const tab = store.createTab(worktreeId, groupId, undefined, {
     launchAgent: agent,
     quickCommandLabel,
     // [FORK] Панельная сессия: таб скрыт из таб-бара, поэтому не активируем
     // его в группе (центр остаётся на прежнем табе) и держим viewMode
     // 'terminal' — чат рендерит панель, а не TerminalPane-оверлей.
-    ...(AGENT_PANEL_ENABLED ? { activate: false } : initialAgentTabViewModeProps(store.settings))
+    ...(AGENT_PANEL_ENABLED
+      ? { activate: false }
+      : initialAgentTabViewModeProps(store.settings, {
+          agent,
+          promptDelivery: viewModePromptDelivery
+        }))
     // [/FORK]
   })
   store.queueTabStartupCommand(tab.id, {
@@ -311,7 +312,7 @@ export function launchAgentInNewTab(args: LaunchAgentInNewTabArgs): LaunchAgentI
     // don't fire for user-initiated cancellation (mirrors the 5s launch
     // watchdog in QuickLaunchButton).
     const tabId = tab.id
-    void pasteDraftWhenAgentReady({
+    void deliverLaunchPromptToAgentTab({
       tabId,
       content: pasteDraftAfterLaunch,
       agent,

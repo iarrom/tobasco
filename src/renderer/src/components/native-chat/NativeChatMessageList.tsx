@@ -95,6 +95,8 @@ export function NativeChatMessageList({
   fontScale,
   onLinkClick,
   allowFileUriLinks = false,
+  failedDeliveryMessageIds,
+  // [FORK]
   planStatus = null,
   onOpenPlan
 }: {
@@ -104,6 +106,7 @@ export function NativeChatMessageList({
   fontScale: number
   onLinkClick?: CommentMarkdownLinkClickHandler
   allowFileUriLinks?: boolean
+  failedDeliveryMessageIds?: ReadonlySet<string>
   /** [FORK] Plan-mode transcript status: shimmering "Creating plan…" while the
    *  plan turn works, "Created plan" (clickable) once the plan file is written. */
   planStatus?: 'creating' | 'created' | null
@@ -309,6 +312,7 @@ export function NativeChatMessageList({
                 isActiveStep={false}
                 thoughtDurationLabel=""
                 sticky={group.message.id === lastUserMessageId}
+                deliveryFailed={failedDeliveryMessageIds?.has(group.message.id) === true}
                 onScrollMessageToTop={scrollMessageToTop}
                 onLinkClick={onLinkClick}
                 allowFileUriLinks={allowFileUriLinks}
