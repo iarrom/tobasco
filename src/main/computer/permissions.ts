@@ -1,4 +1,5 @@
 import { Notification, shell } from 'electron'
+import { applyForkBrandForDisplay } from '../../shared/fork-brand'
 
 const ACCESSIBILITY_SETTINGS_URL =
   'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'
@@ -13,7 +14,8 @@ export function notifyPermissionRequired(instructions: string): void {
 
   const notification = new Notification({
     title: 'Accessibility permission required',
-    body: instructions
+    // [FORK] caller-provided instructions may mention the upstream brand.
+    body: applyForkBrandForDisplay(instructions)
   })
   activePermissionNotifications.add(notification)
 

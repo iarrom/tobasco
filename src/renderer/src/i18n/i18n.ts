@@ -9,6 +9,7 @@ import { initReactI18next } from 'react-i18next'
 import en from './locales/en.json'
 import { isPseudoLocalizationLocale, pseudoLocalizeString } from './pseudo-localization'
 import { DEFAULT_LOCALE, resolveUiLocale } from './supported-languages'
+import { forkBrandI18nPostProcessor } from '../../../shared/fork-brand'
 import type { SupportedUiLocale } from '../../../shared/ui-locale'
 import type { UiLanguage } from '../../../shared/ui-language'
 
@@ -51,7 +52,10 @@ const lazyLocaleBackend: BackendModule = {
 void i18n
   .use(lazyLocaleBackend)
   .use(initReactI18next)
+  // [FORK] rewrite the upstream brand to Tobasco on every translated string.
+  .use(forkBrandI18nPostProcessor)
   .init({
+    postProcess: 'forkBrand',
     fallbackLng: DEFAULT_LOCALE,
     lng: DEFAULT_LOCALE,
     // Why: `resources` seeds the eager English catalog while

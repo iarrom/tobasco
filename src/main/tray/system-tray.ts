@@ -36,9 +36,9 @@ export function createSystemTray(opts: SystemTrayOptions): Tray | null {
     height: TRAY_ICON_SIZE
   })
   tray = new Tray(image)
-  tray.setToolTip('Pumpkin')
+  tray.setToolTip('Tobasco')
   const menu = Menu.buildFromTemplate([
-    { label: translateMain('tray.openOrca', 'Open Pumpkin'), click: () => opts.onOpen() },
+    { label: translateMain('tray.openOrca', 'Open Tobasco'), click: () => opts.onOpen() },
     { type: 'separator' },
     { label: translateMain('tray.quit', 'Quit'), click: () => opts.onQuit() }
   ])

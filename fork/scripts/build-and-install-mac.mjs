@@ -33,7 +33,7 @@ const builtAppDir = arch === 'arm64' ? 'mac-arm64' : 'mac'
 const builtDir = path.join(repoRoot, 'dist', builtAppDir)
 
 // Имя .app берём из результата сборки, а не хардкодим: productName форка
-// уже менялся (Orca → Pumpkin), и жёсткий путь ломал установку.
+// уже менялся (Orca → Tobasco), и жёсткий путь ломал установку.
 function findBuiltApp() {
   if (!existsSync(builtDir)) {
     return null

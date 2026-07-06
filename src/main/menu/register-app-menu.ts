@@ -110,12 +110,12 @@ function buildAndApplyMenu(options: RegisterAppMenuOptions): void {
   }
 
   const featureTourItem: Electron.MenuItemConstructorOptions = {
-    label: translateMain('menu.exploreOrca', 'Explore Pumpkin'),
+    label: translateMain('menu.exploreOrca', 'Explore Tobasco'),
     click: (_menuItem, window) => onOpenFeatureTour(window)
   }
 
   const setupGuideItem: Electron.MenuItemConstructorOptions = {
-    label: translateMain('menu.gettingStarted', 'Getting Started with Pumpkin'),
+    label: translateMain('menu.gettingStarted', 'Getting Started with Tobasco'),
     click: (_menuItem, window) => onOpenSetupGuide(window)
   }
 
@@ -224,7 +224,7 @@ function buildAndApplyMenu(options: RegisterAppMenuOptions): void {
         click: () => onToggleAppearance('showAutomationsButton')
       },
       {
-        label: translateMain('menu.showMobileButton', 'Show Pumpkin Mobile Button'),
+        label: translateMain('menu.showMobileButton', 'Show Tobasco Mobile Button'),
         type: 'checkbox',
         checked: appearance.showMobileButton,
         click: () => onToggleAppearance('showMobileButton')

@@ -17,6 +17,7 @@ import { homedir } from 'node:os'
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import type { CliInstallMethod, CliInstallStatus } from '../../shared/cli-install-types'
+import { applyForkBrandForDisplay } from '../../shared/fork-brand'
 import { buildAppImageCliWrapper } from './appimage-cli-wrapper'
 
 const execFileAsync = promisify(execFile)
@@ -757,7 +758,8 @@ export class CliInstaller {
       state: args.state,
       currentTarget: args.currentTarget,
       unsupportedReason: null,
-      detail: args.detail
+      // [FORK] status details name the app; rewrite the upstream brand for display.
+      detail: args.detail === null ? null : applyForkBrandForDisplay(args.detail)
     }
   }
 

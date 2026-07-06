@@ -20,6 +20,7 @@ import type {
   NotificationSettings,
   NotificationSoundDataResult
 } from '../../shared/types'
+import { applyForkBrandForDisplay } from '../../shared/fork-brand'
 import { getRepoIdFromWorktreeId } from '../../shared/worktree-id'
 import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import { buildNotificationOptions } from './notification-options'
@@ -297,7 +298,13 @@ export function registerNotificationHandlers(store: Store, runtime?: OrcaRuntime
         pruneRecentNotifications(recentNotifications, now)
       }
 
-      const notificationOptions = buildNotificationOptions(args)
+      // [FORK] rewrite the upstream brand in notification copy for display.
+      const rawNotificationOptions = buildNotificationOptions(args)
+      const notificationOptions = {
+        ...rawNotificationOptions,
+        title: applyForkBrandForDisplay(rawNotificationOptions.title),
+        body: applyForkBrandForDisplay(rawNotificationOptions.body)
+      }
 
       // Why: paired mobile clients should follow the same user-facing
       // notification gates as desktop delivery, while still working on hosts
@@ -505,8 +512,10 @@ export function triggerStartupNotificationRegistration(store: Store): void {
   store.updateUI({ notificationPermissionRequested: true })
 
   const notification = new Notification({
-    title: 'Orca is ready to notify you',
-    body: 'Allow notifications so Orca can alert you when agents finish or terminals need attention.'
+    title: applyForkBrandForDisplay('Orca is ready to notify you'),
+    body: applyForkBrandForDisplay(
+      'Allow notifications so Orca can alert you when agents finish or terminals need attention.'
+    )
   })
 
   // Why: prevent GC from collecting the notification (and its click handler)

@@ -2,6 +2,7 @@
    splitting the installer would separate conflict checks from the operations they guard. */
 import { execFile } from 'node:child_process'
 import type { CliInstallStatus } from '../../shared/cli-install-types'
+import { applyForkBrandForDisplay } from '../../shared/fork-brand'
 import { getDefaultWslDistro } from '../wsl'
 import { CliInstaller } from './cli-installer'
 import {
@@ -325,10 +326,12 @@ export class WslCliInstaller {
       state: args.state,
       currentTarget: args.currentTarget,
       unsupportedReason: null,
-      detail:
+      // [FORK] status details name the app; rewrite the upstream brand for display.
+      detail: applyForkBrandForDisplay(
         args.state === 'installed' && !args.pathConfigured
           ? `${args.commandPath} is registered, but ${getPosixDirname(args.commandPath)} is not on PATH in ${args.distro}.`
           : args.detail
+      )
     }
   }
 

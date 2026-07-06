@@ -16,6 +16,7 @@ import type { SFTPWrapper } from 'ssh2'
 import { parse, stringify } from 'yaml'
 
 import type { AgentHookInstallState, AgentHookInstallStatus } from '../../shared/agent-hook-types'
+import { applyForkBrandForDisplay } from '../../shared/fork-brand'
 import {
   readTextFileRemote,
   writeTextFileRemoteAtomic
@@ -200,7 +201,10 @@ function getPluginFilesState(pluginDir = getPluginDir()): {
     return {
       present: true,
       managed,
-      detail: managed ? null : 'Hermes orca-status plugin exists but is not Orca-managed'
+      // [FORK] settings UI shows this detail; rewrite the upstream brand.
+      detail: managed
+        ? null
+        : applyForkBrandForDisplay('Hermes orca-status plugin exists but is not Orca-managed')
     }
   } catch (error) {
     return {

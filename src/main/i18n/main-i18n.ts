@@ -6,6 +6,7 @@ import i18next, {
   type TOptions
 } from 'i18next'
 
+import { applyForkBrandForDisplay } from '../../shared/fork-brand'
 import { isPseudoLocalizationLocale, pseudoLocalizeString } from '../../shared/pseudo-localization'
 import { DEFAULT_UI_LOCALE, resolveUiLocale, type SupportedUiLocale } from '../../shared/ui-locale'
 import { UI_LANGUAGE_SYSTEM, type UiLanguage } from '../../shared/ui-language'
@@ -96,5 +97,7 @@ export function translateMain(key: string, fallback: string, options?: TOptions)
   // to the English default instead of returning undefined from an uninitialized i18n.
   const raw = initialized ? mainI18n.t(key, { defaultValue: fallback, ...options }) : fallback
   const value = typeof raw === 'string' && raw.length > 0 ? raw : fallback
-  return isPseudoLocalizationLocale(mainI18n.language) ? pseudoLocalizeString(value) : value
+  // [FORK] brand rewrite must run before pseudo-localization mangles the letters.
+  const branded = applyForkBrandForDisplay(value)
+  return isPseudoLocalizationLocale(mainI18n.language) ? pseudoLocalizeString(branded) : branded
 }

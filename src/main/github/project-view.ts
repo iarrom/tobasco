@@ -51,6 +51,7 @@ import {
   GITHUB_PROJECT_REF_INPUT_TOO_LARGE_ERROR,
   isGitHubProjectRefInputTooLarge
 } from '../../shared/github-project-ref-input'
+import { applyForkBrandForDisplay } from '../../shared/fork-brand'
 
 // Re-export the public API so existing call sites (`./project-view`) keep
 // working unchanged. The split is internal-only.
@@ -1320,7 +1321,10 @@ export async function getProjectViewTable(
       ok: false,
       error: {
         type: 'unsupported_layout',
-        message: `Orca only renders table views. This is a ${selectedView.layout.replace('_LAYOUT', '').toLowerCase()} view.`
+        // [FORK] user-visible error copy; rewrite the upstream brand.
+        message: applyForkBrandForDisplay(
+          `Orca only renders table views. This is a ${selectedView.layout.replace('_LAYOUT', '').toLowerCase()} view.`
+        )
       },
       ...(typeof count === 'number' ? { totalCount: count } : {})
     }

@@ -9,6 +9,7 @@ import { dirname, join } from 'node:path'
 import type { SFTPWrapper } from 'ssh2'
 
 import type { AgentHookInstallStatus } from '../../shared/agent-hook-types'
+import { applyForkBrandForDisplay } from '../../shared/fork-brand'
 import {
   readTextFileRemote,
   writeTextFileRemoteAtomic
@@ -87,7 +88,8 @@ function statusFromState(pluginPath: string, state: PluginFileState): AgentHookI
         state: 'partial',
         configPath: pluginPath,
         managedHooksPresent: false,
-        detail: 'Amp Orca status plugin exists but is not Orca-managed'
+        // [FORK] settings UI shows this detail; rewrite the upstream brand.
+        detail: applyForkBrandForDisplay('Amp Orca status plugin exists but is not Orca-managed')
       }
     case 'error':
       return {

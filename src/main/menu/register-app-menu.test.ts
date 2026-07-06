@@ -239,8 +239,8 @@ describe('registerAppMenu', () => {
     expect(helpLabels).toEqual(
       expect.arrayContaining([
         'Report Crash...',
-        'Getting Started with Pumpkin',
-        'Explore Pumpkin',
+        'Getting Started with Tobasco',
+        'Explore Tobasco',
         'Check for Updates...'
       ])
     )
@@ -262,17 +262,17 @@ describe('registerAppMenu', () => {
     expect(helpLabels).toEqual([
       'Report Crash...',
       undefined,
-      'Explore Pumpkin',
-      'Getting Started with Pumpkin'
+      'Explore Tobasco',
+      'Getting Started with Tobasco'
     ])
   })
 
-  it('routes Getting Started with Pumpkin through its callback', () => {
+  it('routes Getting Started with Tobasco through its callback', () => {
     const options = buildMenuOptions()
     registerAppMenu(options)
 
     const setupGuideItem = getSubmenu(getTemplate(), 'Help').find(
-      (entry) => entry.label === 'Getting Started with Pumpkin'
+      (entry) => entry.label === 'Getting Started with Tobasco'
     )
     expect(setupGuideItem?.accelerator).toBeUndefined()
 
@@ -288,7 +288,7 @@ describe('registerAppMenu', () => {
     registerAppMenu(options)
 
     const featureTourItem = getSubmenu(getTemplate(), 'Help').find(
-      (entry) => entry.label === 'Explore Pumpkin'
+      (entry) => entry.label === 'Explore Tobasco'
     )
     expect(featureTourItem?.accelerator).toBeUndefined()
 
@@ -341,7 +341,7 @@ describe('registerAppMenu', () => {
     expect(automationsItem?.type).toBe('checkbox')
     expect(automationsItem?.checked).toBe(false)
 
-    const mobileItem = appearanceSubmenu.find((item) => item.label === 'Show Pumpkin Mobile Button')
+    const mobileItem = appearanceSubmenu.find((item) => item.label === 'Show Tobasco Mobile Button')
     expect(mobileItem?.type).toBe('checkbox')
     expect(mobileItem?.checked).toBe(true)
 
@@ -367,7 +367,7 @@ describe('registerAppMenu', () => {
       .find((item) => item.label === 'Show Automations Button')
       ?.click?.({} as never, {} as never, {} as never)
     appearanceSubmenu
-      .find((item) => item.label === 'Show Pumpkin Mobile Button')
+      .find((item) => item.label === 'Show Tobasco Mobile Button')
       ?.click?.({} as never, {} as never, {} as never)
     appearanceSubmenu
       .find((item) => item.label === 'Show Titlebar App Name')
