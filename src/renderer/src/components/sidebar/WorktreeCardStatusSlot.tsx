@@ -22,6 +22,9 @@ type WorktreeCardStatusSlotProps = {
   newCardStyle?: boolean
   hasBranchIdentity?: boolean
   branchIdentityLabel?: string
+  /** [FORK] Активность агента уже показывает его строка под карточкой — слот
+   *  оставляет только пассивные роли (PR/ветка/unread), без дубля прогресса. */
+  suppressAgentActivity?: boolean
   className?: string
 }
 
@@ -98,9 +101,16 @@ export function WorktreeCardStatusSlot({
   newCardStyle = false,
   hasBranchIdentity = false,
   branchIdentityLabel,
+  suppressAgentActivity = false,
   className
 }: WorktreeCardStatusSlotProps): React.JSX.Element | null {
-  const status = useWorktreeActivityStatus(worktreeId)
+  const activityStatus = useWorktreeActivityStatus(worktreeId)
+  // [FORK] См. suppressAgentActivity: рабочие статусы схлопываются в тихий,
+  // чтобы PR/ветка/unread-роли слота решали, что показывать.
+  const status =
+    suppressAgentActivity && !QUIET_REVIEW_REPLACEABLE_STATUSES.has(activityStatus)
+      ? 'inactive'
+      : activityStatus
   const statusLabel = getWorktreeStatusLabel(status) || status
   const canShowReviewStatus =
     newCardStyle &&
