@@ -1,8 +1,6 @@
 import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '@/store'
-import { activateAndRevealWorktree } from '@/lib/worktree-activation'
-import { activateTabAndFocusPane } from '@/lib/activate-tab-and-focus-pane'
 import DashboardAgentRow from '@/components/dashboard/DashboardAgentRow'
 import { useNow } from '@/components/dashboard/useNow'
 import { deriveRunningAgentSendTargets } from '@/lib/running-agent-targets'
@@ -10,8 +8,6 @@ import { selectSendTargetInputs } from './worktree-card-send-target-inputs'
 import { useWorktreeAgentRows } from './useWorktreeAgentRows'
 import { cn } from '@/lib/utils'
 import type { DashboardAgentRow as DashboardAgentRowData } from '@/components/dashboard/useDashboardData'
-import { parsePaneKey } from '../../../../shared/stable-pane-id'
-import { dismissStaleAgentRowByKey } from '../terminal-pane/stale-agent-row'
 import { agentRowMatchesFocusedKey, useFocusedAgentPaneKey } from './focused-agent-row-highlight'
 import {
   CompactAgentExpansion,
@@ -24,11 +20,13 @@ import { revealElementInScrollContainer } from './worktree-sidebar-reveal'
 import { translate } from '@/i18n/i18n'
 // [FORK] Панель агент-сессий: клик по managed-строке выбирает сессию в панели
 // вместо активации скрытого таба в группе.
-import {
-  AGENT_PANEL_ENABLED,
-  isAgentPanelManagedTab
-} from '@/components/agent-panel/agent-panel-managed-tab'
+import { AGENT_PANEL_ENABLED } from '@/components/agent-panel/agent-panel-managed-tab'
 import { useAgentPanelState } from '@/components/agent-panel/agent-panel-state'
+import {
+  activateWorktreeAgentRowTab,
+  archiveWorktreeAgentRow,
+  partitionPinnedAgentRoots
+} from './worktree-agent-row-actions'
 // [/FORK]
 
 export const SUPPRESS_WORKTREE_LIST_SCROLL_ADJUSTMENT_EVENT =
@@ -189,69 +187,7 @@ const WorktreeCardAgentsBody = React.memo(function WorktreeCardAgentsBody({
   )
 
   const handleActivateAgentTab = useCallback(
-    (tabId: string, paneKey: string) => {
-      // [FORK] Черновик панельной сессии (синтетический ключ `tabId:`): лист
-      // ещё неизвестен — просто выбираем сессию в панели активного воркспейса.
-      if (paneKey === `${tabId}:`) {
-        activateAndRevealWorktree(worktreeId)
-        const draftTab = useAppStore
-          .getState()
-          .tabsByWorktree[worktreeId]?.find((t) => t.id === tabId)
-        if (draftTab && isAgentPanelManagedTab(draftTab)) {
-          useAgentPanelState.getState().selectSession(worktreeId, paneKey)
-        }
-        return
-      }
-      const parsed = parsePaneKey(paneKey)
-      if (!parsed) {
-        // Why: malformed or legacy numeric keys cannot be resolved safely after
-        // pane replay/remount, so drop the stale row instead of guessing.
-        console.warn('[WorktreeCardAgents] malformed paneKey, skipping pane focus', paneKey)
-        dismissStaleAgentRowByKey(paneKey)
-        return
-      }
-      if (parsed.tabId !== tabId) {
-        console.warn('[WorktreeCardAgents] paneKey tabId mismatch, dismissing row', {
-          tabId,
-          paneKey
-        })
-        dismissStaleAgentRowByKey(paneKey)
-        return
-      }
-      // Why: route through activateAndRevealWorktree so cross-repo clicks also
-      // set activeRepoId, record a nav-history entry, clear sidebar filters,
-      // reveal the card, and stamp focus recency — per the design doc rule
-      // "Every user-initiated worktree switch must route through
-      // activateAndRevealWorktree". Bypassing it (direct setActiveWorktree +
-      // markWorktreeVisited) silently skipped cross-repo activation and
-      // back/forward history for clicks from inline agent rows.
-      activateAndRevealWorktree(worktreeId)
-      const tabs = useAppStore.getState().tabsByWorktree[worktreeId] ?? []
-      const clickedTab = tabs.find((t) => t.id === tabId)
-      if (clickedTab) {
-        // [FORK] Панельная сессия: таб скрыт из таб-бара, активировать его в
-        // группе нельзя — выбираем сессию в панели агентов.
-        if (isAgentPanelManagedTab(clickedTab)) {
-          useAgentPanelState.getState().selectSession(worktreeId, paneKey)
-          return
-        }
-        // [/FORK]
-        activateTabAndFocusPane(tabId, parsed.leafId, {
-          ackPaneKeyOnSuccess: paneKey,
-          flashFocusedPane: true,
-          scrollToBottomIfOutputSinceLastView: true
-        })
-      } else {
-        const liveEntry = useAppStore.getState().agentStatusByPaneKey[paneKey]
-        if (liveEntry?.worktreeId === worktreeId) {
-          // Why: orchestration worker status can be worktree-attributed before
-          // the renderer knows its tab. Keep the visible live row instead of
-          // dismissing it as stale just because it cannot be focused yet.
-          return
-        }
-        dismissStaleAgentRowByKey(paneKey)
-      }
-    },
+    (tabId: string, paneKey: string) => activateWorktreeAgentRowTab(worktreeId, tabId, paneKey),
     [worktreeId]
   )
   const handleActivateRetainedAgent = useCallback(() => {
@@ -263,9 +199,16 @@ const WorktreeCardAgentsBody = React.memo(function WorktreeCardAgentsBody({
   // never mount this component (see WorktreeCardAgents), so idle worktrees
   // don't pay any timer cost.
   const now = useNow(30_000)
+  // [FORK] Пины сверху + «архив» строки — см. worktree-agent-row-actions.
+  const pinnedAgentTabIds = useAgentPanelState((s) => s.pinnedAgentTabIds)
+  const toggleAgentPinned = useAgentPanelState((s) => s.toggleAgentPinned)
   const { rootRows: rootAgents, childrenByParentPaneKey } = useMemo(
-    () => buildAgentRowLineageTree(agents),
-    [agents]
+    () => partitionPinnedAgentRoots(buildAgentRowLineageTree(agents), pinnedAgentTabIds),
+    [agents, pinnedAgentTabIds]
+  )
+  const handleArchiveAgent = useCallback(
+    (agent: DashboardAgentRowData) => archiveWorktreeAgentRow(agent, worktreeId),
+    [worktreeId]
   )
   const hasLineage = childrenByParentPaneKey.size > 0
   const [collapsedLineageParents, setCollapsedLineageParents] = useState<ReadonlySet<string>>(
@@ -418,6 +361,9 @@ const WorktreeCardAgentsBody = React.memo(function WorktreeCardAgentsBody({
           // [FORK] Cursor-стиль: строка агента — просто текст, без иконки тула.
           hideIdentityIcon={AGENT_PANEL_ENABLED}
           isUnvisited={unvisitedByPaneKey[agent.paneKey] ?? false}
+          isPinned={Boolean(pinnedAgentTabIds[agent.tab.id])}
+          onTogglePin={() => toggleAgentPinned(agent.tab.id)}
+          onArchive={() => handleArchiveAgent(agent)}
           onActivate={
             agent.rowSource === 'retained' ? handleActivateRetainedAgent : handleActivateAgentTab
           }

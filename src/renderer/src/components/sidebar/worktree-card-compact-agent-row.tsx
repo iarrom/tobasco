@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { Archive, ChevronRight, Pin, PinOff } from 'lucide-react'
 import { agentStateLabel } from '@/components/AgentStateDot'
 import type { DashboardAgentRow as DashboardAgentRowData } from '@/components/dashboard/useDashboardData'
 import { AgentIcon } from '@/lib/agent-catalog'
@@ -101,6 +101,10 @@ type CompactAgentRowProps = {
   hideIdentityIcon?: boolean
   /** [FORK] Непрочитанность строки — для янтарного кружка завершённой работы. */
   isUnvisited?: boolean
+  /** [FORK] Hover-действия строки: пин (закрепить сверху) и архив (закрыть). */
+  isPinned?: boolean
+  onTogglePin?: () => void
+  onArchive?: () => void
   cacheTimerActive?: boolean
 }
 
@@ -118,6 +122,9 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
   isFocusedPane = false,
   hideIdentityIcon = false,
   isUnvisited = false,
+  isPinned = false,
+  onTogglePin,
+  onArchive,
   cacheTimerActive = true
 }: CompactAgentRowProps) {
   const hasChildDisclosure =
@@ -242,6 +249,50 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
           +{childAgentCount}
         </span>
       )}
+      {/* [FORK] Hover-действия (Cursor-стиль): пин и архив справа, перед временем. */}
+      {onTogglePin || onArchive ? (
+        <span
+          className={cn(
+            'flex shrink-0 items-center gap-0.5',
+            isPinned
+              ? ''
+              : 'opacity-0 transition-opacity group-hover/compact-agent-row:opacity-100 group-focus-within/compact-agent-row:opacity-100'
+          )}
+        >
+          {onTogglePin ? (
+            <button
+              type="button"
+              aria-label={isPinned ? 'Открепить сессию' : 'Закрепить сессию'}
+              title={isPinned ? 'Открепить' : 'Закрепить'}
+              className="flex size-4 items-center justify-center rounded-sm text-muted-foreground/70 hover:bg-worktree-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-worktree-sidebar-ring"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onTogglePin()
+              }}
+              onKeyDown={stopActivationKeyPropagation}
+            >
+              {isPinned ? <PinOff className="size-3" /> : <Pin className="size-3" />}
+            </button>
+          ) : null}
+          {onArchive ? (
+            <button
+              type="button"
+              aria-label="Архивировать сессию"
+              title="Архивировать"
+              className="flex size-4 items-center justify-center rounded-sm text-muted-foreground/70 hover:bg-worktree-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-worktree-sidebar-ring"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onArchive()
+              }}
+              onKeyDown={stopActivationKeyPropagation}
+            >
+              <Archive className="size-3" />
+            </button>
+          ) : null}
+        </span>
+      ) : null}
       {cacheTimer && <CacheTimer startedAt={cacheTimer.startedAt} ttlMs={cacheTimer.ttlMs} />}
       {shortTime && (
         <span

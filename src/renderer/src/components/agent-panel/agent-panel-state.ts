@@ -8,6 +8,7 @@ import type { AgentPanelSessionView } from './agent-panel-managed-tab'
 
 const SELECTION_STORAGE_KEY = 'fork.agentPanel.selectionByWorktree'
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'fork.agentPanel.sidebarAgentsCollapsed'
+const PINNED_AGENT_TABS_STORAGE_KEY = 'fork.agentPanel.pinnedAgentTabIds'
 
 function loadStoredRecord<T>(key: string): Record<string, T> {
   if (typeof localStorage === 'undefined') {
@@ -43,6 +44,8 @@ type AgentPanelState = {
   sessionViewBySessionKey: Record<string, AgentPanelSessionView>
   /** Свёрнут ли список агентов под worktree-карточкой в сайдбаре. */
   sidebarAgentsCollapsedByWorktreeId: Record<string, boolean>
+  /** Закреплённые агент-сессии (по tabId): держатся сверху списка в сайдбаре. */
+  pinnedAgentTabIds: Record<string, boolean>
   /** Таб, чей TerminalPane сейчас хостится в теле панели (режим 'terminal').
    *  Публикуется колонкой; TerminalPaneOverlayLayer по нему портирует пейн.
    *  Эфемерное состояние — не персистится. */
@@ -54,6 +57,7 @@ type AgentPanelState = {
   clearSessionSelection: (worktreeId: string, tabId: string) => void
   setSessionView: (sessionKey: string, view: AgentPanelSessionView) => void
   toggleSidebarAgentsCollapsed: (worktreeId: string) => void
+  toggleAgentPinned: (tabId: string) => void
   setPanelTerminalHostTabId: (worktreeId: string, tabId: string | null) => void
   setPanelTerminalBodyElement: (element: HTMLElement | null) => void
 }
@@ -68,6 +72,7 @@ export const useAgentPanelState = create<AgentPanelState>((set) => ({
   selectedSessionKeyByWorktree: loadStoredRecord<string>(SELECTION_STORAGE_KEY),
   sessionViewBySessionKey: {},
   sidebarAgentsCollapsedByWorktreeId: loadStoredRecord<boolean>(SIDEBAR_COLLAPSED_STORAGE_KEY),
+  pinnedAgentTabIds: loadStoredRecord<boolean>(PINNED_AGENT_TABS_STORAGE_KEY),
   panelTerminalHostTabIdByWorktree: {},
   panelTerminalBodyElement: null,
   selectSession: (worktreeId, sessionKey) => {
@@ -99,6 +104,18 @@ export const useAgentPanelState = create<AgentPanelState>((set) => ({
     set((state) => ({
       sessionViewBySessionKey: { ...state.sessionViewBySessionKey, [sessionKey]: view }
     }))
+  },
+  toggleAgentPinned: (tabId) => {
+    set((state) => {
+      const next = { ...state.pinnedAgentTabIds }
+      if (next[tabId]) {
+        delete next[tabId]
+      } else {
+        next[tabId] = true
+      }
+      persistRecord(PINNED_AGENT_TABS_STORAGE_KEY, next)
+      return { pinnedAgentTabIds: next }
+    })
   },
   toggleSidebarAgentsCollapsed: (worktreeId) => {
     set((state) => {
