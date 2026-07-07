@@ -264,7 +264,7 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
               type="button"
               aria-label={isPinned ? 'Открепить сессию' : 'Закрепить сессию'}
               title={isPinned ? 'Открепить' : 'Закрепить'}
-              className="flex size-4 items-center justify-center rounded-sm text-muted-foreground/70 hover:bg-worktree-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-worktree-sidebar-ring"
+              className="flex size-5 items-center justify-center rounded-sm text-muted-foreground/70 hover:bg-worktree-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-worktree-sidebar-ring"
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
@@ -272,7 +272,7 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
               }}
               onKeyDown={stopActivationKeyPropagation}
             >
-              {isPinned ? <PinOff className="size-3" /> : <Pin className="size-3" />}
+              {isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
             </button>
           ) : null}
           {onArchive ? (
@@ -280,7 +280,7 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
               type="button"
               aria-label="Архивировать сессию"
               title="Архивировать"
-              className="flex size-4 items-center justify-center rounded-sm text-muted-foreground/70 hover:bg-worktree-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-worktree-sidebar-ring"
+              className="flex size-5 items-center justify-center rounded-sm text-muted-foreground/70 hover:bg-worktree-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-worktree-sidebar-ring"
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
@@ -288,7 +288,7 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
               }}
               onKeyDown={stopActivationKeyPropagation}
             >
-              <Archive className="size-3" />
+              <Archive className="size-3.5" />
             </button>
           ) : null}
         </span>
@@ -319,7 +319,8 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
         'text-muted-foreground worktree-agent-row-hover',
         hasChildDisclosure && 'worktree-agent-lineage-parent-row',
         isLineageChild && 'worktree-agent-lineage-child-row',
-        'flex h-6 items-center gap-1',
+        // [FORK] Чуть выше строка (28px) — просторнее и легче кликать.
+        'flex h-7 items-center gap-1',
         isFocusedPane && 'bg-worktree-sidebar-accent',
         sendTargetStatus === 'sending' && 'cursor-progress opacity-75',
         sendTargetStatus === 'disabled' && 'cursor-default opacity-60'
