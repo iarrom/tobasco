@@ -1466,8 +1466,11 @@ function App(): React.JSX.Element {
   const { width: chatColumnWidth, expanded: chatColumnExpanded } = useAgentChatColumnState(
     useShallow((s) => ({ width: s.width, expanded: s.expanded }))
   )
-  // [FORK] Чат-колонка показывается в воркспейс-виде при открытом воркспейсе.
-  const agentChatColumnVisible = activeView === 'terminal' && !!activeWorktreeId
+  // [FORK] Чат-колонка показывается в воркспейс-виде при открытом воркспейсе —
+  // и на вью Tasks: задачи в центре, работа над ними идёт через чат рядом
+  // (кнопка Tasks в таб-баре не «уводит» из окружения воркспейса).
+  const agentChatColumnVisible =
+    (activeView === 'terminal' || activeView === 'tasks') && !!activeWorktreeId
 
   const handleToggleExpand = (): void => {
     if (!effectiveActiveTabId) {
