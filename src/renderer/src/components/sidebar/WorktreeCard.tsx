@@ -1769,14 +1769,9 @@ const WorktreeCard = React.memo(function WorktreeCard({
              read as one compact header group. */}
         {showInlineAgentList && (
           // [FORK] Сворачиваемая секция агентов (дисклоузер — чеврон в title row).
-          // Отрицательный ml компенсирует колонку статус-лейна (w-5 + mr-1),
-          // чтобы строки агентов начинались заподлицо с левым краем карточки.
           <SidebarWorktreeAgentsSection
             worktreeId={worktree.id}
-            className={cn(
-              hasMetaRow || remoteBranchConflict ? 'mt-0' : '-mt-1',
-              showCombinedStatusSlot && newCardStyle && '-ml-6'
-            )}
+            className={hasMetaRow || remoteBranchConflict ? 'mt-0' : '-mt-1'}
           >
             <WorktreeCardAgents
               worktreeId={worktree.id}

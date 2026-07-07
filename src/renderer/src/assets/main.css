@@ -1065,10 +1065,9 @@
 }
 
 .worktree-agent-row-hover[data-focused-agent-pane='true'] {
-  /* Why: a borderless fill. --sidebar-accent ≈ --sidebar in light mode, so the
-     selection wash mixes sidebar-foreground into the accent to stay legible
-     without going so dark that muted text (timestamp) drops out. */
-  background: color-mix(in srgb, var(--sidebar-foreground) 12%, var(--sidebar-accent));
+  /* [FORK] Лёгкая стандартная заливка (уровень hover-поверхностей), без яркого
+     акцента — выбранная строка агента читается спокойно. */
+  background: color-mix(in srgb, var(--sidebar-foreground) 4%, transparent);
 }
 
 .dark .worktree-agent-row-hover:hover {
@@ -1076,7 +1075,7 @@
 }
 
 .dark .worktree-agent-row-hover[data-focused-agent-pane='true'] {
-  background: color-mix(in srgb, var(--accent) 70%, transparent);
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 /* Why: sidebar-accent sits too close to sidebar for this persistent prompt;
@@ -1453,13 +1452,13 @@
 
 [data-compact-agent-list='true']
   .compact-agent-row.worktree-agent-row-hover[data-focused-agent-pane='true'] {
-  background: color-mix(in srgb, var(--sidebar-foreground) 12%, var(--sidebar-accent));
+  background: color-mix(in srgb, var(--sidebar-foreground) 4%, transparent);
 }
 
 .dark
   [data-compact-agent-list='true']
   .compact-agent-row.worktree-agent-row-hover[data-focused-agent-pane='true'] {
-  background: color-mix(in srgb, var(--accent) 70%, transparent);
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 [data-compact-agent-list='true'] .worktree-agent-lineage-children {

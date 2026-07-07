@@ -199,12 +199,15 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
       ) : null}
       {/* [FORK] Единый минимальный индикатор вместо стейт-дота: приглушённый
           кружок — драфт (чат не начат), янтарный — агент завершил и не
-          прочитано; в остальных случаях ничего (и без резервирования отступа). */}
-      {rowIndicator === 'draft' ? (
-        <span className="size-2 shrink-0 rounded-full bg-muted-foreground/40" aria-hidden />
-      ) : rowIndicator === 'unread-done' ? (
-        <span className="size-2 shrink-0 rounded-full bg-amber-500" aria-hidden />
-      ) : null}
+          прочитано. Слот фиксированной ширины — небольшой внутренний отступ
+          строки, куда кружок встаёт, не сдвигая текст. */}
+      <span className="flex w-2.5 shrink-0 items-center justify-center" aria-hidden>
+        {rowIndicator === 'draft' ? (
+          <span className="size-2 rounded-full bg-muted-foreground/40" />
+        ) : rowIndicator === 'unread-done' ? (
+          <span className="size-2 rounded-full bg-amber-500" />
+        ) : null}
+      </span>
       {!hideIdentityIcon && (
         <span className="inline-flex shrink-0" title={formatAgentTypeLabel(agent.agentType)}>
           <AgentIcon agent={agentTypeToIconAgent(agent.agentType)} size={13} />
