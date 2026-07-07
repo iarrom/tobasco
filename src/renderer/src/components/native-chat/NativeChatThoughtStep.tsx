@@ -43,11 +43,11 @@ export function NativeChatThoughtStep({
           <SquareChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
         )}
         {active ? (
-          <span className="native-chat-step-shimmer text-xs font-medium">
+          <span className="native-chat-step-shimmer text-sm font-medium">
             {translate('components.native-chat.thought.active', 'Thinking…')}
           </span>
         ) : (
-          <span className="text-xs">
+          <span className="text-sm">
             <span className="font-medium text-foreground/90">
               {translate('components.native-chat.thought.done', 'Thought')}
             </span>

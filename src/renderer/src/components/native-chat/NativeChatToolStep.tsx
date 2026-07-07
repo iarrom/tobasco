@@ -79,21 +79,21 @@ export function NativeChatToolStep({
             остаётся кликабельной для разворачивания деталей. */}
         <ToolIcon className="size-3 shrink-0 text-muted-foreground/80" />
         {active ? (
-          <span className="native-chat-step-shimmer min-w-0 truncate text-xs">
+          <span className="native-chat-step-shimmer min-w-0 truncate text-sm">
             <span className="font-medium">{activeVerb}</span>
             {label ? <span> {label}</span> : null}
             {hint ? <span> {hint}</span> : null}
           </span>
         ) : (
           <>
-            <span className="shrink-0 text-xs font-medium text-foreground/90">{verb}</span>
+            <span className="shrink-0 text-sm font-medium text-foreground/90">{verb}</span>
             {label ? (
-              <span className="min-w-0 truncate text-xs text-muted-foreground" title={label}>
+              <span className="min-w-0 truncate text-sm text-muted-foreground" title={label}>
                 {label}
               </span>
             ) : null}
             {hint ? (
-              <span className="shrink-0 truncate text-xs text-muted-foreground/60">{hint}</span>
+              <span className="shrink-0 truncate text-sm text-muted-foreground/60">{hint}</span>
             ) : null}
           </>
         )}

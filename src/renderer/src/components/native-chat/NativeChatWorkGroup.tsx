@@ -86,7 +86,7 @@ export function NativeChatWorkGroup({
         ) : (
           <SquareChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
         )}
-        <span className="text-xs text-muted-foreground">{summary}</span>
+        <span className="text-sm text-muted-foreground">{summary}</span>
       </button>
       {open ? (
         <div className="mt-1 flex flex-col gap-3 border-l-2 border-border/60 pl-2.5 opacity-70">

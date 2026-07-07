@@ -117,7 +117,7 @@ export function NativeChatSubagentStep({
         )}
         <Bot className="size-3.5 shrink-0 text-muted-foreground" />
         <span
-          className={cn('min-w-0 truncate text-xs', running && 'native-chat-step-shimmer')}
+          className={cn('min-w-0 truncate text-sm', running && 'native-chat-step-shimmer')}
           title={launch.description}
         >
           <span className="font-medium">
