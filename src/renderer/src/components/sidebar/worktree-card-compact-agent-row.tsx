@@ -249,64 +249,78 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
           +{childAgentCount}
         </span>
       )}
-      {/* [FORK] Hover-действия (Cursor-стиль): пин и архив справа, перед временем. */}
-      {onTogglePin || onArchive ? (
-        <span
-          className={cn(
-            'flex shrink-0 items-center gap-0.5',
-            isPinned
-              ? ''
-              : 'opacity-0 transition-opacity group-hover/compact-agent-row:opacity-100 group-focus-within/compact-agent-row:opacity-100'
-          )}
-        >
-          {onTogglePin ? (
-            <button
-              type="button"
-              aria-label={isPinned ? 'Открепить сессию' : 'Закрепить сессию'}
-              title={isPinned ? 'Открепить' : 'Закрепить'}
-              className="flex size-5 items-center justify-center rounded-sm text-muted-foreground/70 hover:bg-worktree-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-worktree-sidebar-ring"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onTogglePin()
-              }}
-              onKeyDown={stopActivationKeyPropagation}
-            >
-              {isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
-            </button>
-          ) : null}
-          {onArchive ? (
-            <button
-              type="button"
-              aria-label="Архивировать сессию"
-              title="Архивировать"
-              className="flex size-5 items-center justify-center rounded-sm text-muted-foreground/70 hover:bg-worktree-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-worktree-sidebar-ring"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onArchive()
-              }}
-              onKeyDown={stopActivationKeyPropagation}
-            >
-              <Archive className="size-3.5" />
-            </button>
-          ) : null}
-        </span>
-      ) : null}
       {cacheTimer && <CacheTimer startedAt={cacheTimer.startedAt} ttlMs={cacheTimer.ttlMs} />}
-      {shortTime && (
-        <span
-          className={cn(
-            'shrink-0 text-[10px] tabular-nums',
-            // Why: the muted timestamp drops out against the selected-row fill.
-            isFocusedPane ? 'text-foreground/70' : 'text-muted-foreground/60',
-            // [FORK] На hover время уступает место кнопкам пина/архива (Cursor-стиль).
-            (onTogglePin || onArchive) &&
-              'group-hover/compact-agent-row:hidden group-focus-within/compact-agent-row:hidden'
+      {/* [FORK] Hover-действия (Cursor-стиль): пин и архив. Время рисуется
+          поверх их зарезервированного места и меняется с ними прозрачностью —
+          при hover ничего не сдвигается, иначе кнопки прыгают под курсором и
+          клик по пину промахивается. */}
+      {onTogglePin || onArchive ? (
+        <span className="relative flex shrink-0 items-center">
+          <span
+            className={cn(
+              'flex items-center gap-0.5',
+              isPinned
+                ? ''
+                : 'opacity-0 transition-opacity group-hover/compact-agent-row:opacity-100 group-focus-within/compact-agent-row:opacity-100'
+            )}
+          >
+            {onTogglePin ? (
+              <button
+                type="button"
+                aria-label={isPinned ? 'Открепить сессию' : 'Закрепить сессию'}
+                title={isPinned ? 'Открепить' : 'Закрепить'}
+                className="flex size-5 items-center justify-center rounded-sm text-muted-foreground/70 hover:bg-worktree-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-worktree-sidebar-ring"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onTogglePin()
+                }}
+                onKeyDown={stopActivationKeyPropagation}
+              >
+                {isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+              </button>
+            ) : null}
+            {onArchive ? (
+              <button
+                type="button"
+                aria-label="Архивировать сессию"
+                title="Архивировать"
+                className="flex size-5 items-center justify-center rounded-sm text-muted-foreground/70 hover:bg-worktree-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-worktree-sidebar-ring"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onArchive()
+                }}
+                onKeyDown={stopActivationKeyPropagation}
+              >
+                <Archive className="size-3.5" />
+              </button>
+            ) : null}
+          </span>
+          {shortTime && !isPinned && (
+            <span
+              className={cn(
+                'pointer-events-none absolute right-0 text-[10px] tabular-nums',
+                // Why: the muted timestamp drops out against the selected-row fill.
+                isFocusedPane ? 'text-foreground/70' : 'text-muted-foreground/60',
+                'transition-opacity group-hover/compact-agent-row:opacity-0 group-focus-within/compact-agent-row:opacity-0'
+              )}
+            >
+              {shortTime}
+            </span>
           )}
-        >
-          {shortTime}
         </span>
+      ) : (
+        shortTime && (
+          <span
+            className={cn(
+              'shrink-0 text-[10px] tabular-nums',
+              isFocusedPane ? 'text-foreground/70' : 'text-muted-foreground/60'
+            )}
+          >
+            {shortTime}
+          </span>
+        )
       )}
     </>
   )
