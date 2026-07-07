@@ -13,6 +13,7 @@ import {
   ChevronDown,
   GitMerge,
   LoaderCircle,
+  MessageSquarePlus,
   Server,
   ServerOff,
   Star,
@@ -27,6 +28,7 @@ import WorktreeCardAgents from './WorktreeCardAgents'
 // [FORK] Сворачиваемая обёртка секции агентов (панель агент-сессий).
 import SidebarWorktreeAgentsSection from './SidebarWorktreeAgentsSection'
 import { AGENT_PANEL_ENABLED } from '@/components/agent-panel/agent-panel-managed-tab'
+import { AgentSessionLaunchMenu } from '@/components/agent-panel/AgentSessionTabStrip'
 // [/FORK]
 import { useWorktreeAgentRows } from './useWorktreeAgentRows'
 import { WorktreeCardStatusSlot } from './WorktreeCardStatusSlot'
@@ -937,6 +939,10 @@ const WorktreeCard = React.memo(function WorktreeCard({
       isDeleting,
       isMainWorktree: worktree.isMainWorktree
     })
+  // [FORK] Запуск агент-чата прямо с карточки: меню выбора агента, сессия
+  // откроется в панели агентов этого worktree — без создания нового worktree.
+  const showAgentChatQuickAction =
+    AGENT_PANEL_ENABLED && !affiliateListMode && !isFolder && !isDeleting
   const handleWorkspaceQuickAction = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       event.preventDefault()
@@ -1215,7 +1221,7 @@ const WorktreeCard = React.memo(function WorktreeCard({
   const hasMetaRow = compactCards
     ? hasMetadataBadge || cacheStartedAt != null
     : hasDetailedMetaRowContent
-  const showHeaderActions = showTitleRowPrimary || showDeleteQuickAction
+  const showHeaderActions = showTitleRowPrimary || showDeleteQuickAction || showAgentChatQuickAction
   // Why: the hover owns full identity when the row truncates; normalize once
   // so title/branch de-dupe and identity-only hover eligibility stay in sync.
   const trimmedVisibleCardTitle = visibleCardTitle.trim()
@@ -1233,7 +1239,13 @@ const WorktreeCard = React.memo(function WorktreeCard({
     trimmedVisibleCardTitle.length > 0 && trimmedVisibleCardTitle !== hoverBranchName
       ? trimmedVisibleCardTitle
       : undefined
-  const hasHoverIdentity = Boolean(hoverWorkspaceTitle || hoverBranchName)
+  // [FORK] Identity alone opens the hover only when it adds information: a card
+  // whose visible title IS the branch (e.g. "main") otherwise pops a popover
+  // that just echoes the title. Live ports no longer enable or ride the card
+  // hover either — the popover fired on every hover of a card with a dev server.
+  const hasHoverIdentity = Boolean(
+    hoverWorkspaceTitle || (showBranchIdentityHover ? hoverBranchName : undefined)
+  )
   const hasHoverDetails =
     newCardStyle &&
     (hasWorktreeCardDetails({
@@ -1243,7 +1255,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
       comment: hoverComment,
       automationProvenance: metaAutomationProvenance
     }) ||
-      workspacePorts.length > 0 ||
       hasHoverIdentity)
   // Why: the parent row owns metadata hover; avoid stacking the title's
   // truncation tooltip on top of the richer details popover.
@@ -1251,7 +1262,7 @@ const WorktreeCard = React.memo(function WorktreeCard({
     ? hasHoverDetails
       ? (title: React.ReactElement): React.ReactElement => title
       : undefined
-    : compactCards && (showBranchIdentityHover || hasDetails || hasPorts)
+    : compactCards && (showBranchIdentityHover || hasDetails)
       ? (title: React.ReactElement): React.ReactElement => (
           <WorktreeCardDetailsHover
             issue={metaIssue}
@@ -1263,7 +1274,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
             branchName={showBranchIdentityHover ? branch : undefined}
             workspaceTitle={worktree.displayName}
             identityOrder="branch-first"
-            detailsAfter={hasPorts ? <WorktreeCardPortsDetails ports={workspacePorts} /> : null}
             openDelay={100}
             hoverControl={detailsHoverControl}
             onEditIssue={affiliateListMode ? undefined : handleEditIssue}
@@ -1608,6 +1618,30 @@ const WorktreeCard = React.memo(function WorktreeCard({
                 </Tooltip>
               )}
 
+              {showAgentChatQuickAction && (
+                // [FORK] Новый агент-чат на этом worktree: выбор агента в меню.
+                <AgentSessionLaunchMenu
+                  worktreeId={worktree.id}
+                  launchSource="sidebar"
+                  onBeforeLaunch={() => void activateWorktreeFromSidebar(worktree.id)}
+                  trigger={
+                    <button
+                      type="button"
+                      onPointerDown={stopQuickActionPointerPropagation}
+                      onClick={(event) => event.stopPropagation()}
+                      className={cn(
+                        'inline-flex size-4 items-center justify-center rounded bg-transparent opacity-0 transition-colors transition-opacity',
+                        'group-hover/worktree-card:opacity-100 group-focus-within/worktree-card:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100',
+                        'text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground'
+                      )}
+                      aria-label="Новый агент-чат"
+                      title="Новый агент-чат"
+                    >
+                      <MessageSquarePlus className="size-3.5" />
+                    </button>
+                  }
+                />
+              )}
               {showDeleteQuickAction && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1747,6 +1781,9 @@ const WorktreeCard = React.memo(function WorktreeCard({
             <WorktreeCardAgents
               worktreeId={worktree.id}
               agents={agentActivityDisplayMode === 'compact' ? compactInlineAgentRows : undefined}
+              // Секция выше — единственный дисклоузер списка; вторая сводка
+              // «N agents» внутри читалась как дубль-аккордеон.
+              suppressCompactSummary
             />
           </SidebarWorktreeAgentsSection>
           // [/FORK]
@@ -1822,9 +1859,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
         branchName={hoverBranchName}
         workspaceTitle={hoverWorkspaceTitle}
         workspaceTitleRenameDisabled={isDeleting || affiliateListMode}
-        detailsAfter={
-          workspacePorts.length > 0 ? <WorktreeCardPortsDetails ports={workspacePorts} /> : null
-        }
         openDelay={100}
         hoverControl={detailsHoverControl}
         onRenameWorkspaceTitle={affiliateListMode ? undefined : handleRenameTitle}

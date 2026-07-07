@@ -5,6 +5,7 @@
 import { Plus, X } from 'lucide-react'
 import { useCallback, useMemo } from 'react'
 import type { TuiAgent } from '../../../../shared/types'
+import type { LaunchSource } from '../../../../shared/telemetry-events'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { AgentIcon, getAgentCatalog } from '@/lib/agent-catalog'
@@ -41,10 +42,16 @@ function sessionIconAgent(session: AgentPanelSession): TuiAgent | null {
 
 export function AgentSessionLaunchMenu({
   worktreeId,
-  trigger
+  trigger,
+  onBeforeLaunch,
+  launchSource
 }: {
   worktreeId: string
   trigger: React.ReactNode
+  /** Запуск не с активного worktree (сайдбар): активировать его перед стартом,
+   *  чтобы панель показала новую сессию. */
+  onBeforeLaunch?: () => void
+  launchSource?: LaunchSource
 }): React.JSX.Element {
   const defaultAgent = useAppStore((s) => s.settings?.defaultTuiAgent)
   const { detectedIds } = useDetectedAgents(null)
@@ -56,9 +63,10 @@ export function AgentSessionLaunchMenu({
 
   const onLaunch = useCallback(
     (agent: TuiAgent) => {
-      launchAgentInNewTab({ agent, worktreeId })
+      onBeforeLaunch?.()
+      launchAgentInNewTab({ agent, worktreeId, ...(launchSource ? { launchSource } : {}) })
     },
-    [worktreeId]
+    [launchSource, onBeforeLaunch, worktreeId]
   )
 
   return (

@@ -195,7 +195,7 @@ describe('WorktreeCard compact hover details', () => {
     cacheTimerMocks.usePromptCacheCountdownStartedAt.mockReturnValue(null)
   })
 
-  it('shows PR and live port details from the compact worktree card hover', async () => {
+  it('shows PR details from the compact worktree card hover, keeping live ports off it', async () => {
     settings = { compactWorktreeCards: true, experimentalNewWorktreeCardStyle: true }
     const worktree = makeWorktree({ linkedPR: 456 })
     hostedReviewCache = {
@@ -241,13 +241,15 @@ describe('WorktreeCard compact hover details', () => {
     expect(markup).toContain('data-hover-open-delay="100"')
     expect(markup).toContain('PR #456')
     expect(markup).toContain('Fix stale GH PR')
-    expect(markup).toContain('Live Ports')
-    expect(markup).toContain('58941')
+    // [FORK] Live ports no longer ride the whole-card hover — the popover fired
+    // on every hover of a card with a dev server. The title-row plug chip stays.
+    expect(markup).not.toContain('Live Ports')
+    expect(markup).not.toContain('58941')
     expect(markup).not.toContain('data-worktree-card-meta-row=""')
     expect(markup).toContain('aria-label="1 live port"')
   }, 30_000)
 
-  it('shows hidden task, notes, and port details from the compact worktree card hover', async () => {
+  it('shows hidden task and notes details from the compact worktree card hover', async () => {
     settings = { compactWorktreeCards: true, experimentalNewWorktreeCardStyle: true }
     worktreeCardProperties = ['status']
     const worktree = makeWorktree({
@@ -293,8 +295,9 @@ describe('WorktreeCard compact hover details', () => {
     expect(markup).toContain('Issue #123')
     expect(markup).toContain('Linear ENG-123')
     expect(markup).toContain('Reviewer handoff note')
-    expect(markup).toContain('Live Ports')
-    expect(markup).toContain('58941')
+    // [FORK] Live ports no longer ride the whole-card hover (see test above).
+    expect(markup).not.toContain('Live Ports')
+    expect(markup).not.toContain('58941')
     expect(markup).not.toContain('data-worktree-card-meta-row=""')
   }, 30_000)
 
@@ -490,7 +493,7 @@ describe('WorktreeCard compact hover details', () => {
     expect(markup).not.toContain('Live Ports')
   })
 
-  it('does not duplicate workspace identity when trimmed title equals branch', async () => {
+  it('does not open an identity-only hover when trimmed title equals branch', async () => {
     settings = { compactWorktreeCards: false, experimentalNewWorktreeCardStyle: true }
     worktreeCardProperties = ['status', 'branch']
     const { default: WorktreeCard } = await import('./WorktreeCard')
@@ -503,8 +506,11 @@ describe('WorktreeCard compact hover details', () => {
       />
     )
 
-    expectParentBodyIsHoverTrigger(markup)
-    expect(markup.match(/feature\/local-branch/g)).toHaveLength(3)
+    // [FORK] A popover that only echoes the visible title (e.g. hovering
+    // "main") adds nothing — identity enables the hover only when the branch
+    // differs from the title. The identity renders in the row alone.
+    expect(markup).not.toContain('data-hover-card-trigger=""')
+    expect(markup.match(/feature\/local-branch/g)).toHaveLength(2)
   })
 
   it('keeps detailed metadata hover scoped to metadata icons by default', async () => {

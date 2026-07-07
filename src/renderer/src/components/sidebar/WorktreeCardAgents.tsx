@@ -51,6 +51,9 @@ type Props = {
    *  decide whether a divider is appropriate — e.g. suppressed when the card
    *  chrome already provides visual separation. */
   className?: string
+  /** [FORK] The sidebar wraps this list in its own «Агенты · N» disclosure;
+   *  skip the compact "N agents" summary row so the card has one accordion. */
+  suppressCompactSummary?: boolean
 }
 
 /**
@@ -64,7 +67,8 @@ type Props = {
 const WorktreeCardAgents = React.memo(function WorktreeCardAgents({
   worktreeId,
   agents: precomputedAgents,
-  className
+  className,
+  suppressCompactSummary
 }: Props) {
   const selectedAgents = useWorktreeAgentRows(worktreeId, precomputedAgents === undefined)
   const agents = precomputedAgents ?? selectedAgents
@@ -74,19 +78,28 @@ const WorktreeCardAgents = React.memo(function WorktreeCardAgents({
   // Why: gate the 30s tick behind non-empty rows by mounting the inner body
   // only when there's something to show. The setInterval lives in the inner
   // component's useNow, so idle worktrees don't pay per-card timer cost.
-  return <WorktreeCardAgentsBody worktreeId={worktreeId} agents={agents} className={className} />
+  return (
+    <WorktreeCardAgentsBody
+      worktreeId={worktreeId}
+      agents={agents}
+      className={className}
+      suppressCompactSummary={suppressCompactSummary}
+    />
+  )
 })
 
 type BodyProps = {
   worktreeId: string
   agents: DashboardAgentRowData[]
   className?: string
+  suppressCompactSummary?: boolean
 }
 
 const WorktreeCardAgentsBody = React.memo(function WorktreeCardAgentsBody({
   worktreeId,
   agents,
-  className
+  className,
+  suppressCompactSummary
 }: BodyProps) {
   const agentActivityDisplayMode =
     useAppStore((s) => s.agentActivityDisplayMode) ?? DEFAULT_AGENT_ACTIVITY_DISPLAY_MODE
@@ -424,7 +437,8 @@ const WorktreeCardAgentsBody = React.memo(function WorktreeCardAgentsBody({
     // Why: compact worktree cards keep multiple active agents to a single
     // predictable status line, even when there are only two agents. In
     // send-target mode, rows are the picker surface, so keep targets visible.
-    const shouldUseSummaryRow = summaryAgents.length > 1 && !isAgentSendTargetModeActive
+    const shouldUseSummaryRow =
+      summaryAgents.length > 1 && !isAgentSendTargetModeActive && !suppressCompactSummary
     const subjectLabel = `${hasLineage ? rootAgents.length : agents.length} agents`
 
     return (
