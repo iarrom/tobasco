@@ -102,8 +102,12 @@ function findPaneForPtyId(
   return null
 }
 
-function findProviderSession(
-  state: AppState,
+/** Provider-session lookup for a pane, exported for tests. Live agent status
+ *  wins; the persisted sleeping record covers the cold-start case — agent
+ *  status is renderer memory only, so after an app relaunch the record is the
+ *  sole surviving source of the resume session id. */
+export function findAgentProviderSessionForPane(
+  state: Pick<AppState, 'agentStatusByPaneKey' | 'sleepingAgentSessionsByPaneKey'>,
   pane: { tabId: string; paneKey: string },
   agent: string
 ): AgentProviderSessionMetadata | null {
@@ -117,6 +121,16 @@ function findProviderSession(
     const entryTabId = entry.tabId ?? entry.paneKey.split(':')[0]
     if (entryTabId === pane.tabId && entry.agentType === agent && entry.providerSession) {
       return entry.providerSession
+    }
+  }
+  const sleepingDirect = state.sleepingAgentSessionsByPaneKey[pane.paneKey]
+  if (sleepingDirect && sleepingDirect.agent === agent) {
+    return sleepingDirect.providerSession
+  }
+  for (const [paneKey, record] of Object.entries(state.sleepingAgentSessionsByPaneKey)) {
+    const recordTabId = record.tabId ?? paneKey.split(':')[0]
+    if (recordTabId === pane.tabId && record.agent === agent) {
+      return record.providerSession
     }
   }
   return null
@@ -166,7 +180,7 @@ async function runNativeChatAgentRevival(
   if (!pane) {
     return false
   }
-  const providerSession = findProviderSession(state, pane, agent)
+  const providerSession = findAgentProviderSessionForPane(state, pane, agent)
   if (!providerSession) {
     return false
   }

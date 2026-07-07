@@ -680,7 +680,10 @@ describe('captureAllSleepingAgentSessions', () => {
     })
   })
 
-  it('skips done agents — there is no turn left to resume', () => {
+  // [FORK] Upstream skipped done agents entirely ("nothing to resume"), which
+  // left every idle chat unrecoverable when the daemon died with the app (dev
+  // relaunch, OS reboot): the pane came back as a bare shell under a dead chat.
+  it('captures done agents as passive completed-hibernation evidence', () => {
     const store = createTestStore()
     const entry = makeAgentEntry({
       paneKey: 'tab-1:leaf-1',
@@ -691,6 +694,98 @@ describe('captureAllSleepingAgentSessions', () => {
     store.setState({
       tabsByWorktree: {
         'wt-1': [makeTab({ id: 'tab-1', worktreeId: 'wt-1' })]
+      },
+      agentStatusByPaneKey: { 'tab-1:leaf-1': entry }
+    } as Partial<AppState>)
+
+    store.getState().captureAllSleepingAgentSessions()
+
+    expect(store.getState().sleepingAgentSessionsByPaneKey['tab-1:leaf-1']).toMatchObject({
+      agent: 'claude',
+      state: 'done',
+      providerSession: { key: 'session_id', id: 'sess-1' },
+      origin: 'worktree-sleep'
+    })
+  })
+
+  it('strips the interrupted flag from done captures so activation keeps them', () => {
+    const store = createTestStore()
+    const entry = makeAgentEntry({
+      paneKey: 'tab-1:leaf-1',
+      worktreeId: 'wt-1',
+      sessionId: 'sess-1'
+    })
+    entry.state = 'done'
+    entry.interrupted = true
+    store.setState({
+      tabsByWorktree: {
+        'wt-1': [makeTab({ id: 'tab-1', worktreeId: 'wt-1' })]
+      },
+      agentStatusByPaneKey: { 'tab-1:leaf-1': entry }
+    } as Partial<AppState>)
+
+    store.getState().captureAllSleepingAgentSessions()
+
+    const record = store.getState().sleepingAgentSessionsByPaneKey['tab-1:leaf-1']
+    expect(record).toMatchObject({ state: 'done', origin: 'worktree-sleep' })
+    expect(record?.interrupted).toBeUndefined()
+  })
+
+  it('keeps an existing hibernation record over a fresh done capture', () => {
+    const store = createTestStore()
+    const entry = makeAgentEntry({
+      paneKey: 'tab-1:leaf-1',
+      worktreeId: 'wt-1',
+      sessionId: 'sess-1'
+    })
+    entry.state = 'done'
+    const hibernated = {
+      paneKey: 'tab-1:leaf-1',
+      tabId: 'tab-1',
+      worktreeId: 'wt-1',
+      agent: 'claude' as const,
+      providerSession: { key: 'session_id' as const, id: 'sess-1' },
+      prompt: 'finish the task',
+      state: 'done' as const,
+      capturedAt: 5,
+      updatedAt: 5,
+      launchConfig: { agentArgs: '--model opus', agentEnv: {} },
+      origin: 'worktree-sleep' as const
+    }
+    store.setState({
+      tabsByWorktree: {
+        'wt-1': [makeTab({ id: 'tab-1', worktreeId: 'wt-1' })]
+      },
+      agentStatusByPaneKey: { 'tab-1:leaf-1': entry },
+      sleepingAgentSessionsByPaneKey: { 'tab-1:leaf-1': hibernated }
+    } as Partial<AppState>)
+
+    store.getState().captureAllSleepingAgentSessions()
+
+    // Why: runtime hibernation may hold a launchConfig the done-state registry
+    // sweep already dropped — overwriting would lose the relaunch options.
+    expect(store.getState().sleepingAgentSessionsByPaneKey['tab-1:leaf-1']).toBe(hibernated)
+  })
+
+  it('skips done agents on remote runtime panes — their PTYs outlive the app', () => {
+    const store = createTestStore()
+    const entry = makeAgentEntry({
+      paneKey: 'tab-1:leaf-1',
+      worktreeId: 'wt-1',
+      sessionId: 'sess-1'
+    })
+    entry.state = 'done'
+    store.setState({
+      tabsByWorktree: {
+        'wt-1': [makeTab({ id: 'tab-1', worktreeId: 'wt-1' })]
+      },
+      terminalLayoutsByTabId: {
+        'tab-1': {
+          root: { type: 'leaf', leafId: 'leaf-1' },
+          activeLeafId: 'leaf-1',
+          expandedLeafId: null,
+          ptyIdsByLeafId: { 'leaf-1': 'remote:env-1@@handle-1' }
+        }
       },
       agentStatusByPaneKey: { 'tab-1:leaf-1': entry }
     } as Partial<AppState>)

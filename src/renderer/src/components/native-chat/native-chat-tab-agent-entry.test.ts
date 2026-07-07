@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import type { AgentStatusEntry } from '../../../../shared/agent-status-types'
+import type { SleepingAgentSessionRecord } from '../../../../shared/agent-session-resume'
 import { resolveNativeChatSession } from './native-chat-pane-resolution'
-import { findTabAgentEntry } from './native-chat-tab-agent-entry'
+import { findTabAgentEntry, findTabSleepingAgentSession } from './native-chat-tab-agent-entry'
 
 function entry(
   overrides: Partial<AgentStatusEntry> & Pick<AgentStatusEntry, 'paneKey'>
@@ -98,5 +99,49 @@ describe('findTabAgentEntry (#19 selector)', () => {
     const paneKey = found?.paneKey ?? 'tab-9:'
     expect(found).toBeUndefined()
     expect(paneKey).toBe('tab-9:')
+  })
+})
+
+// [FORK] Cold-start fallback: the persisted sleeping record is the only
+// session-id source after an app relaunch (agent status is renderer memory).
+describe('findTabSleepingAgentSession', () => {
+  function record(
+    overrides: Partial<SleepingAgentSessionRecord> & Pick<SleepingAgentSessionRecord, 'paneKey'>
+  ): SleepingAgentSessionRecord {
+    return {
+      worktreeId: 'wt-1',
+      agent: 'claude',
+      providerSession: { key: 'session_id', id: 'sess-1' },
+      prompt: '',
+      state: 'done',
+      capturedAt: 0,
+      updatedAt: 0,
+      ...overrides
+    }
+  }
+
+  it('matches by paneKey tab prefix', () => {
+    const target = record({ paneKey: 'tab-1:leaf-a' })
+    expect(
+      findTabSleepingAgentSession(
+        { 'tab-0:leaf-z': record({ paneKey: 'tab-0:leaf-z' }), 'tab-1:leaf-a': target },
+        'tab-1'
+      )
+    ).toBe(target)
+  })
+
+  it('matches by the record tabId when the pane key does not carry the tab prefix', () => {
+    // Legacy numeric pane keys don't embed the tab id; the tabId field does.
+    const target = record({ paneKey: '42', tabId: 'tab-1' })
+    expect(findTabSleepingAgentSession({ '42': target }, 'tab-1')).toBe(target)
+  })
+
+  it('does not match a tab id that is only a substring of another tab id', () => {
+    expect(
+      findTabSleepingAgentSession(
+        { 'tab-10:leaf-a': record({ paneKey: 'tab-10:leaf-a' }) },
+        'tab-1'
+      )
+    ).toBeUndefined()
   })
 })

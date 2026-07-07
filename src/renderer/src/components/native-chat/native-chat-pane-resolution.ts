@@ -1,4 +1,5 @@
 import type { AgentStatusEntry, AgentType } from '../../../../shared/agent-status-types'
+import type { SleepingAgentSessionRecord } from '../../../../shared/agent-session-resume'
 import type { TuiAgent } from '../../../../shared/types'
 import { isNativeChatSupportedAgent } from './native-chat-availability'
 
@@ -23,6 +24,11 @@ export type NativeChatPaneResolutionInput = {
   /** Agent identity resolved from trusted terminal title/foreground signals.
    *  Fallback only: launch metadata and hook status remain authoritative. */
   resolvedAgent?: TuiAgent | null
+  /** [FORK] Persisted sleeping-session record for this pane's tab. Used only
+   *  when no live entry carries a providerSession — i.e. right after an app
+   *  relaunch, before the resumed agent's hooks report — so the chat can show
+   *  the conversation instead of a blank pane. */
+  sleepingSession?: Pick<SleepingAgentSessionRecord, 'agent' | 'providerSession'> | null
 }
 
 export type NativeChatPaneResolution = {
@@ -50,10 +56,18 @@ export function resolveNativeChatSession(
   if (!agent || !isNativeChatSupportedAgent(agent)) {
     return null
   }
+  // [FORK] The sleeping record only stands in while NO live providerSession
+  // exists, and only for the same agent — a live entry (even session-less, e.g.
+  // a freshly launched new conversation) must not inherit the old transcript.
+  const liveSession = input.agentStatusEntry?.providerSession
+  const fallbackSession =
+    !liveSession && !input.agentStatusEntry && input.sleepingSession?.agent === agent
+      ? input.sleepingSession.providerSession
+      : undefined
   return {
     agent,
-    sessionId: input.agentStatusEntry?.providerSession?.id ?? null,
-    transcriptPath: input.agentStatusEntry?.providerSession?.transcriptPath ?? null,
+    sessionId: liveSession?.id ?? fallbackSession?.id ?? null,
+    transcriptPath: liveSession?.transcriptPath ?? fallbackSession?.transcriptPath ?? null,
     ptyId: input.ptyId,
     paneKey: input.paneKey
   }

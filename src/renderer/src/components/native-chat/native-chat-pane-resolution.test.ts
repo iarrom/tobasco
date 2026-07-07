@@ -78,6 +78,66 @@ describe('resolveNativeChatSession', () => {
     ).toEqual({ agent: 'claude', sessionId: null, transcriptPath: null, ptyId: 'pty-1', paneKey })
   })
 
+  // [FORK] Cold start: agent status is renderer memory, so after an app
+  // relaunch the persisted sleeping record is the only session-id source.
+  it('falls back to the sleeping record when no live entry exists', () => {
+    const paneKey = 'tab-1:11111111-1111-4111-8111-111111111111'
+    expect(
+      resolveNativeChatSession({
+        paneKey,
+        launchAgent: 'claude',
+        sleepingSession: {
+          agent: 'claude',
+          providerSession: {
+            key: 'session_id',
+            id: 'sess-restored',
+            transcriptPath: '/home/u/.claude/projects/slug/sess-restored.jsonl'
+          }
+        },
+        ptyId: 'pty-1'
+      })
+    ).toEqual({
+      agent: 'claude',
+      sessionId: 'sess-restored',
+      transcriptPath: '/home/u/.claude/projects/slug/sess-restored.jsonl',
+      ptyId: 'pty-1',
+      paneKey
+    })
+  })
+
+  it('ignores a sleeping record for a different agent', () => {
+    const paneKey = 'tab-1:11111111-1111-4111-8111-111111111111'
+    expect(
+      resolveNativeChatSession({
+        paneKey,
+        launchAgent: 'claude',
+        sleepingSession: {
+          agent: 'codex',
+          providerSession: { key: 'session_id', id: 'sess-other' }
+        },
+        ptyId: 'pty-1'
+      })
+    ).toEqual({ agent: 'claude', sessionId: null, transcriptPath: null, ptyId: 'pty-1', paneKey })
+  })
+
+  it('does not let a sleeping record shadow a live session-less entry', () => {
+    const paneKey = 'tab-1:11111111-1111-4111-8111-111111111111'
+    expect(
+      resolveNativeChatSession({
+        paneKey,
+        launchAgent: 'claude',
+        // A fresh conversation just launched in this pane: it must not inherit
+        // the previous session's transcript while its own id is still unknown.
+        agentStatusEntry: entry({ paneKey, agentType: 'claude' }),
+        sleepingSession: {
+          agent: 'claude',
+          providerSession: { key: 'session_id', id: 'sess-stale' }
+        },
+        ptyId: 'pty-1'
+      })
+    ).toEqual({ agent: 'claude', sessionId: null, transcriptPath: null, ptyId: 'pty-1', paneKey })
+  })
+
   it('resolves two split leaves independently to their own values', () => {
     const leftKey = 'tab-1:11111111-1111-4111-8111-111111111111'
     const rightKey = 'tab-1:22222222-2222-4222-8222-222222222222'

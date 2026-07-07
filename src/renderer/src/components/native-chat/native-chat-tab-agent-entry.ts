@@ -1,4 +1,5 @@
 import type { AgentStatusEntry } from '../../../../shared/agent-status-types'
+import type { SleepingAgentSessionRecord } from '../../../../shared/agent-session-resume'
 
 /** Pick the live agent-status entry for this tab. A tab's panes are keyed
  *  `${tabId}:${leafId}`; the single active agent pane is the one whose paneKey
@@ -15,6 +16,24 @@ export function findTabAgentEntry(
   for (const [paneKey, entry] of Object.entries(agentStatusByPaneKey)) {
     if (paneKey.startsWith(prefix)) {
       return entry
+    }
+  }
+  return undefined
+}
+
+/** [FORK] The tab's persisted sleeping-session record, when one exists. Agent
+ *  status is renderer memory only, so after an app relaunch this record is the
+ *  sole source of the session id/transcript path until the resumed agent's
+ *  hooks report again — it lets the chat render history instead of a blank
+ *  pane while (or in case) the in-place resume boots. */
+export function findTabSleepingAgentSession(
+  sleepingAgentSessionsByPaneKey: Record<string, SleepingAgentSessionRecord>,
+  terminalTabId: string
+): SleepingAgentSessionRecord | undefined {
+  const prefix = `${terminalTabId}:`
+  for (const [paneKey, record] of Object.entries(sleepingAgentSessionsByPaneKey)) {
+    if (paneKey.startsWith(prefix) || record.tabId === terminalTabId) {
+      return record
     }
   }
   return undefined

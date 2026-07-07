@@ -24,6 +24,8 @@ import {
 } from '../../../../shared/agent-status-identity'
 import type { TerminalTab } from '../../../../shared/types'
 import { isExplicitAgentStatusFresh } from '@/lib/agent-status'
+// [FORK] quit flush: idle-pane capture must skip remote runtime panes.
+import { parseRemoteRuntimePtyId } from '@/runtime/runtime-terminal-stream'
 import { createFreshnessScheduler } from './agent-status-freshness-scheduler'
 
 /** Snapshot of a finished (or vanished) agent status entry, kept around so
@@ -266,6 +268,18 @@ function findAgentPaneWorktreeId(state: AppState, paneKey: string): string | nul
     }
   }
   return null
+}
+
+// [FORK] A remote runtime pane's PTY lives on the remote host and outlives the
+// local app, so quit-time idle capture must not write a sleeping record for it:
+// reconnect treats "remote pty + sleeping record" as a hibernated pane and
+// abandons the still-live remote session (pty-connection reattach routing).
+function isRemoteRuntimeAgentPane(state: AppState, paneKey: string): boolean {
+  const tabId = getTabIdFromPaneKey(paneKey)
+  const leafId = getLeafIdFromPaneKey(paneKey)
+  const ptyId =
+    tabId && leafId ? state.terminalLayoutsByTabId[tabId]?.ptyIdsByLeafId?.[leafId] : undefined
+  return typeof ptyId === 'string' && parseRemoteRuntimePtyId(ptyId) !== null
 }
 
 function findTabForAgentEntry(
@@ -1984,9 +1998,13 @@ export const createAgentStatusSlice: StateCreator<AppState, [], [], AgentStatusS
     captureAllSleepingAgentSessions: () => {
       // Why: the quit flush must persist provider session ids for every live
       // agent pane — otherwise agents whose daemon PTYs die while the app is
-      // closed have nothing to `--resume` from (#5232). Only live entries are
-      // captured: retained rows belong to panes the user already closed, and
-      // `done` sessions have nothing to resume.
+      // closed have nothing to `--resume` from (#5232). Retained rows are
+      // skipped: they belong to panes the user already closed.
+      // [FORK] Idle (done) local panes are captured too, as passive completed-
+      // hibernation evidence ('worktree-sleep' + done): when the daemon dies
+      // with the app (dev relaunch, OS reboot), the pane's cold restore can
+      // still relaunch the chat via the provider resume command instead of
+      // leaving a bare shell under a dead chat pane.
       set((s) => {
         const capturedAt = Date.now()
         const next: Record<string, SleepingAgentSessionRecord> = {
@@ -1994,7 +2012,15 @@ export const createAgentStatusSlice: StateCreator<AppState, [], [], AgentStatusS
         }
         let changed = false
         for (const entry of Object.values(s.agentStatusByPaneKey)) {
-          if (entry.state === 'done') {
+          const isIdle = entry.state === 'done'
+          // [FORK] An existing record wins for idle panes — runtime hibernation
+          // may have captured a launchConfig the done-state registry sweep has
+          // already dropped. Remote panes keep upstream's skip (see helper).
+          if (
+            isIdle &&
+            (s.sleepingAgentSessionsByPaneKey[entry.paneKey] ||
+              isRemoteRuntimeAgentPane(s, entry.paneKey))
+          ) {
             continue
           }
           const worktreeId = entry.worktreeId ?? findAgentPaneWorktreeId(s, entry.paneKey)
@@ -2003,11 +2029,14 @@ export const createAgentStatusSlice: StateCreator<AppState, [], [], AgentStatusS
           }
           const record = sleepingRecordFromEntry({
             state: s,
-            entry,
+            // [FORK] Interrupted records are pruned at worktree activation
+            // before pane cold restore could consume them — strip the flag so
+            // an Esc'd idle session still resumes after a restart.
+            entry: isIdle && entry.interrupted ? { ...entry, interrupted: undefined } : entry,
             worktreeId,
             capturedAt,
             launchConfig: getLaunchConfigForEntry(s, entry),
-            origin: 'quit'
+            origin: isIdle ? 'worktree-sleep' : 'quit'
           })
           if (record && next[record.paneKey] !== record) {
             next[record.paneKey] = record

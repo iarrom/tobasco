@@ -17,7 +17,7 @@ import { NativeChatInteractiveCard } from './NativeChatInteractiveCard'
 import { NativeChatEmptyState } from './NativeChatEmptyState'
 import { NativeChatSessionGate } from './NativeChatSessionGate'
 import { useNativeChatInteractiveSend } from './use-native-chat-interactive-send'
-import { findTabAgentEntry } from './native-chat-tab-agent-entry'
+import { findTabAgentEntry, findTabSleepingAgentSession } from './native-chat-tab-agent-entry'
 import {
   shouldClearNativeChatWorkingSuppression,
   shouldShowNativeChatWorking
@@ -116,6 +116,16 @@ export default function NativeChatView({
         : findTabAgentEntry(s.agentStatusByPaneKey, terminalTabId)
     )
   )
+  // [FORK] After an app relaunch agent status is empty; the persisted sleeping
+  // record still knows the session id, so the chat can render its history
+  // while the pane's cold restore resumes the agent in place.
+  const sleepingSession = useAppStore(
+    useShallow((s) =>
+      agentStatusEntry
+        ? undefined
+        : findTabSleepingAgentSession(s.sleepingAgentSessionsByPaneKey, terminalTabId)
+    )
+  )
 
   // paneKey: prefer the live entry's key; fall back to the tab id so the hook
   // still has a stable key to select live status by before any pane reports.
@@ -126,6 +136,7 @@ export default function NativeChatView({
       launchAgent={launchAgent}
       resolvedAgent={resolvedAgent}
       agentStatusEntry={agentStatusEntry}
+      sleepingSession={sleepingSession}
       ptyId={targetPtyId}
     >
       {(resolution) => (
