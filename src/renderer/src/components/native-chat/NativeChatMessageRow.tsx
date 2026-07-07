@@ -31,20 +31,48 @@ function proseToMarkdown(blocks: NativeChatBlock[]): string {
     .join('\n\n')
 }
 
+// Cursor-style "5h ago" under the answer; static per render — the transcript
+// re-renders often enough that the label stays fresh.
+function formatAnsweredAgo(timestamp: number, now: number): string | null {
+  const delta = now - timestamp
+  if (delta < 0) {
+    return null
+  }
+  if (delta < 60_000) {
+    return 'just now'
+  }
+  const minutes = Math.floor(delta / 60_000)
+  if (minutes < 60) {
+    return `${minutes}m ago`
+  }
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) {
+    return `${hours}h ago`
+  }
+  return `${Math.floor(hours / 24)}d ago`
+}
+
 /** Inline controls for an agent message (mobile AgentControls parity): copy the
  *  message's prose, and scroll so this message's top aligns to the viewport top.
- *  Reveals on hover / keyboard focus like the prior copy affordance. */
+ *  Rendered in flow under the message (Cursor-style), always visible, with the
+ *  answer's age at the left. */
 function AgentControls({
   markdown,
+  timestamp,
   onScrollToTop,
   className
 }: {
   markdown: string
+  timestamp: number | null
   onScrollToTop: () => void
   className?: string
 }): React.JSX.Element {
+  const agoLabel = timestamp !== null ? formatAnsweredAgo(timestamp, Date.now()) : null
   return (
     <div className={cn('flex items-center gap-1', className)}>
+      {agoLabel ? (
+        <span className="mr-0.5 text-[11px] text-muted-foreground/60">{agoLabel}</span>
+      ) : null}
       <NativeChatCopyButton text={markdown} />
       <button
         type="button"
@@ -54,7 +82,7 @@ function AgentControls({
           'Scroll this message to top'
         )}
         title={translate('components.native-chat.scrollMessageToTop', 'Scroll this message to top')}
-        className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-input/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <ArrowUp className="size-3.5" />
       </button>
@@ -237,13 +265,6 @@ export function MessageRow({
         isSystem && 'text-xs text-muted-foreground'
       )}
     >
-      {showControls ? (
-        <AgentControls
-          markdown={markdown}
-          onScrollToTop={scrollToTop}
-          className="absolute -top-1 right-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-        />
-      ) : null}
       <NativeChatMessageImageAttachments blocks={prose} />
       {markdown ? (
         <CommentMarkdown
@@ -265,6 +286,16 @@ export function MessageRow({
             />
           ))}
         </div>
+      ) : null}
+      {showControls ? (
+        // [FORK] Cursor-style: controls sit in flow under the answer, right-
+        // aligned and always visible, with the answer's age at their left.
+        <AgentControls
+          markdown={markdown}
+          timestamp={message.timestamp}
+          onScrollToTop={scrollToTop}
+          className="mt-0.5 justify-end"
+        />
       ) : null}
     </div>
   )

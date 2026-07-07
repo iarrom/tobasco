@@ -67,7 +67,7 @@ export function NativeChatReviewPlanCard({
             type="button"
             onClick={onDismiss}
             aria-label={translate('components.native-chat.plan.dismiss', 'Dismiss plan')}
-            className="flex size-5 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex size-5 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-input/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <X className="size-3.5" />
           </button>

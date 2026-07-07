@@ -214,7 +214,7 @@ export function AgentChatColumn(): React.JSX.Element {
             onClick={() => setSessionView(target.key, view === 'chat' ? 'terminal' : 'chat')}
             aria-label={view === 'chat' ? 'Показать терминал' : 'Показать чат'}
             title={view === 'chat' ? 'Показать терминал' : 'Показать чат'}
-            className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
+            className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-input/30 hover:text-foreground"
           >
             {view === 'chat' ? (
               <SquareTerminal className="size-3.5" />
@@ -228,7 +228,7 @@ export function AgentChatColumn(): React.JSX.Element {
           onClick={toggleExpanded}
           aria-label={expanded ? 'Свернуть чат' : 'Развернуть чат'}
           title={expanded ? 'Свернуть чат' : 'Развернуть чат'}
-          className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-input/30 hover:text-foreground"
         >
           {expanded ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
         </button>
