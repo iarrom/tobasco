@@ -1,10 +1,10 @@
-// [FORK] One-line row for a launched sub-agent (Task/Agent tool), Cursor-style:
-// `▸ Agent  <what it does>` with a shimmer while it runs. Clicking expands an
-// inline preview panel — the sub-agent's own action sequence read live from its
-// side transcript — inside the same chat window.
+// [FORK] Row for a launched sub-agent (Task/Agent tool), Cursor-style: an
+// indented bullet-list item — `• <what it does>  <agent type>` with a shimmer
+// while it runs and the result's first line as a muted status underneath once
+// done. Clicking expands an inline preview panel — the sub-agent's own action
+// sequence read live from its side transcript — inside the same chat window.
 
 import { useContext, useMemo, useState } from 'react'
-import { Bot, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { translate } from '@/i18n/i18n'
 import {
@@ -100,41 +100,60 @@ export function NativeChatSubagentStep({
   })
   const rows = useMemo(() => previewRowsFromMessages(preview.messages), [preview.messages])
 
+  // Cursor shows the sub-agent's one-line summary under the title; the sync
+  // launch result's first line is our equivalent. Hidden while the full text is
+  // expanded right below.
+  const statusLine =
+    finalText && !expanded
+      ? (finalText
+          .split('\n')
+          .find((line) => line.trim().length > 0)
+          ?.trim() ?? null)
+      : null
+
   return (
-    <div>
+    <div className="pl-4">
       <button
         type="button"
         onClick={() => expandable && setExpanded((v) => !v)}
         className={cn(
-          'flex w-full items-center gap-1.5 py-0.5 text-left',
+          'flex w-full items-start gap-2 py-0.5 text-left',
           expandable ? 'cursor-pointer' : 'cursor-default'
         )}
       >
-        {expanded ? (
-          <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
-        )}
-        <Bot className="size-3.5 shrink-0 text-muted-foreground" />
         <span
-          className={cn('min-w-0 truncate text-sm', running && 'native-chat-step-shimmer')}
-          title={launch.description}
-        >
-          <span className="font-medium">
-            {translate('components.native-chat.subagent.verb', 'Agent')}
-          </span>{' '}
-          <span className={running ? undefined : 'text-muted-foreground'}>
-            {launch.description}
+          aria-hidden
+          className="mt-[7px] size-1.5 shrink-0 rounded-full bg-muted-foreground/60"
+        />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-baseline gap-1.5 text-sm">
+            <span
+              className={cn(
+                'min-w-0 truncate text-foreground/90',
+                running && 'native-chat-step-shimmer'
+              )}
+              title={launch.description}
+            >
+              {launch.description}
+            </span>
+            <span className="shrink-0 text-muted-foreground">
+              {launch.subagentType ?? translate('components.native-chat.subagent.verb', 'Agent')}
+            </span>
+            {background ? (
+              <span className="shrink-0 text-[10px] text-muted-foreground/70">
+                {translate('components.native-chat.subagent.background', 'background')}
+              </span>
+            ) : null}
           </span>
+          {statusLine ? (
+            <span className="block truncate text-sm text-muted-foreground" title={statusLine}>
+              {statusLine}
+            </span>
+          ) : null}
         </span>
-        {background ? (
-          <span className="shrink-0 text-[10px] text-muted-foreground/70">
-            {translate('components.native-chat.subagent.background', 'background')}
-          </span>
-        ) : null}
       </button>
       {expanded ? (
-        <div className="ml-5 mt-0.5 max-h-72 overflow-y-auto rounded-lg border border-border/60 bg-card/40 px-2.5 py-1.5 scrollbar-sleek">
+        <div className="ml-3.5 mt-0.5 max-h-72 overflow-y-auto rounded-lg border border-border/60 bg-card/40 px-2.5 py-1.5 scrollbar-sleek">
           {previewPath ? (
             rows.length > 0 ? (
               <div className="flex flex-col gap-0.5">
