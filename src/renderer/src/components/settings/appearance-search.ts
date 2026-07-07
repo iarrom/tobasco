@@ -1,4 +1,5 @@
 import type { SettingsSearchEntry } from './settings-search'
+import { FORK_FIXED_APP_ICON } from '../../../../shared/fork-brand'
 import { getTerminalAppearanceSearchEntries } from './terminal-search'
 import { getLeftSidebarAppearanceEntry, getSidebarEntries } from './appearance-sidebar-search'
 import { createLocalizedCatalog } from '@/i18n/localized-catalog'
@@ -283,7 +284,8 @@ function buildAppearancePaneSearchEntries(
     ...getTitlebarEntries(),
     ...getStatusBarEntries(),
     ...getSidebarEntries(),
-    ...getAppIconEntries(),
+    // [FORK] Fixed app icon — the hidden selector must not surface in search.
+    ...(FORK_FIXED_APP_ICON ? [] : getAppIconEntries()),
     ...getSystemTrayEntries(options)
   ]
 }

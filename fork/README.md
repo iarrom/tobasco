@@ -44,7 +44,8 @@ CI-страховка: `.github/workflows/upstream-sync.yml` пытается м
 |------|------------|
 | `fork/styles/fork-overrides.css` | Переопределение CSS-токенов (тема/цвета/радиусы). Подключён в `src/renderer/src/main.tsx` после `main.css`. |
 | `fork/app-icon/tobasco-bottle.png` | Исходник иконки приложения форка (растровый квадрат). |
-| `fork/scripts/generate-app-icon.mjs` | Генерирует из исходника все артефакты иконки (`resources/build/icon.{icns,png,ico}`, `resources/icon.png`, `resources/icon-dev.png`). Перезапустить после апстрим-мержа, перезатёршего иконки. |
+| `fork/app-icon/tobasco-logo.svg` | Векторный глиф-бутылка для UI (Landing, онбординг, сайдбар). |
+| `fork/scripts/generate-app-icon.mjs` | Генерирует из исходников все артефакты иконки (`resources/build/icon.{icns,png,ico}`, `resources/icon.png`, `resources/icon-dev.png`, `resources/logo.svg`). Перезапустить после апстрим-мержа, перезатёршего иконки. |
 | `fork/scripts/divergence.sh` | Показывает площадь расхождения с `upstream/main` (какие upstream-файлы мы тронули). |
 | `fork/README.md` | Этот документ — стратегия и конвенции. |
 

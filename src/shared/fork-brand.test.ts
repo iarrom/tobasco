@@ -23,6 +23,10 @@ describe('replaceUpstreamBrandName', () => {
     expect(replaceUpstreamBrandName('Orcaを再起動')).toBe('Tobascoを再起動')
   })
 
+  it('replaces the all-caps wordmark', () => {
+    expect(replaceUpstreamBrandName('ORCA')).toBe('TOBASCO')
+  })
+
   it('keeps lowercase functional identifiers untouched', () => {
     expect(replaceUpstreamBrandName('orca://pair?code=abc')).toBe('orca://pair?code=abc')
     expect(replaceUpstreamBrandName('/usr/local/bin/orca')).toBe('/usr/local/bin/orca')

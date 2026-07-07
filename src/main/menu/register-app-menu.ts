@@ -6,6 +6,7 @@ import {
   type KeybindingOverrides
 } from '../../shared/keybindings'
 import type { UpdateCheckOptions } from '../../shared/types'
+import { applyForkBrandForDisplay } from '../../shared/fork-brand'
 import { translateMain } from '../i18n/main-i18n'
 
 export type AppearanceMenuState = {
@@ -129,20 +130,22 @@ function buildAndApplyMenu(options: RegisterAppMenuOptions): void {
   // the system menu bar. On Windows/Linux that menu would render as a
   // redundant "Orca" entry with roles that don't apply, so we omit it there
   // and distribute its items across File / Help instead.
+  // [FORK] Role items label themselves from app.name, which must stay 'Orca'
+  // (userData path); brand only the visible labels.
   const macAppMenu: Electron.MenuItemConstructorOptions = {
-    label: app.name,
+    label: applyForkBrandForDisplay(app.name),
     submenu: [
-      { role: 'about' },
+      { role: 'about', label: applyForkBrandForDisplay(`About ${app.name}`) },
       checkForUpdatesItem,
       settingsItem,
       { type: 'separator' },
       { role: 'services' },
       { type: 'separator' },
-      { role: 'hide' },
+      { role: 'hide', label: applyForkBrandForDisplay(`Hide ${app.name}`) },
       { role: 'hideOthers' },
       { role: 'unhide' },
       { type: 'separator' },
-      { role: 'quit' }
+      { role: 'quit', label: applyForkBrandForDisplay(`Quit ${app.name}`) }
     ]
   }
 

@@ -10,12 +10,13 @@
 //   resources/build/icon.ico   — Windows (обрезка safe-area, мультиразмер)
 //   resources/icon.png         — 256px (окна/трей на Win/Linux)
 //   resources/icon-dev.png     — 256px + оранжевый бейдж «D» для dev-сборок
+//   resources/logo.svg         — копия fork/app-icon/tobasco-logo.svg (глиф в UI)
 //
 // После апстрим-мержа, перезатёршего иконки, просто перезапустить:
 //   node fork/scripts/generate-app-icon.mjs
 
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
+import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import {
@@ -307,6 +308,14 @@ function main() {
 
   writeFileSync(path.join(buildDir, 'icon.ico'), buildWindowsIcoFromPng(png1024))
   console.log('  -> resources/build/icon.ico (мультиразмер, safe-area обрезан)')
+
+  // Векторный глиф для UI (Landing, онбординг, сайдбар) — апстрим импортирует
+  // resources/logo.svg напрямую, поэтому подменяем сам ассет.
+  copyFileSync(
+    path.join(repoRoot, 'fork', 'app-icon', 'tobasco-logo.svg'),
+    path.join(resourcesDir, 'logo.svg')
+  )
+  console.log('  -> resources/logo.svg (векторная бутылка)')
 }
 
 main()
