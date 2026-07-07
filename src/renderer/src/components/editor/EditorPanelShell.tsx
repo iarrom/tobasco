@@ -103,12 +103,15 @@ export function EditorPanelShell({
     <div ref={panelRef} className="flex flex-col flex-1 min-w-0 min-h-0">
       {!model.isCombinedDiff &&
         activeFile.mode !== 'check-details' &&
+        activeFile.mode !== 'tasks' &&
         planTabContext !== null &&
         model.isMarkdown && (
           <PlanTabHeader context={planTabContext} filePath={activeFile.filePath} />
         )}
+      {/* [FORK] Виртуальный таб задач — без файлового заголовка, как check-details. */}
       {!model.isCombinedDiff &&
         activeFile.mode !== 'check-details' &&
+        activeFile.mode !== 'tasks' &&
         (planTabContext === null || !model.isMarkdown) && (
           <EditorPanelHeader
             activeFile={activeFile}

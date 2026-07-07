@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
-import { GitCompareArrows, Eye, ShieldAlert, Pin, ListChecks } from 'lucide-react'
+import { GitCompareArrows, Eye, ShieldAlert, Pin, ListChecks, ListTodo } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { basename, normalizeRelativePath } from '@/lib/path'
@@ -79,6 +79,8 @@ export default function EditorFileTab({
   const isDiff = file.mode === 'diff'
   const isConflictReview = file.mode === 'conflict-review'
   const isCheckDetails = file.mode === 'check-details'
+  // [FORK] Виртуальный таб модуля Tasks (см. openTasksEditorTab).
+  const isTasksTab = file.mode === 'tasks'
   const isMarkdownPreviewTab = file.mode === 'markdown-preview'
   const resolvedLanguage =
     file.mode === 'diff'
@@ -252,6 +254,10 @@ export default function EditorFileTab({
         />
       ) : isCheckDetails ? (
         <ListChecks
+          className={`w-3 h-3 mr-1 shrink-0 ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}
+        />
+      ) : isTasksTab ? (
+        <ListTodo
           className={`w-3 h-3 mr-1 shrink-0 ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}
         />
       ) : isDiff ? (

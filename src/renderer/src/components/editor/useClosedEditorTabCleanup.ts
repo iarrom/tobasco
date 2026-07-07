@@ -68,5 +68,8 @@ function disposeClosedEditorTab(prevId: string, prevFile: OpenFile): void {
       break
     case 'check-details':
       break
+    // [FORK] Виртуальный таб модуля Tasks: Monaco-моделей и кэшей не держит.
+    case 'tasks':
+      break
   }
 }

@@ -35,6 +35,9 @@ import { translate } from '@/i18n/i18n'
 import { CheckRunDetailsPanel } from './CheckRunDetailsPanel'
 
 const MonacoEditor = lazy(() => import('./MonacoEditor'))
+// [FORK] Модуль Tasks в виртуальном табе (mode 'tasks') — лениво, чтобы
+// тяжёлая страница задач не попадала в editor-бандл.
+const TaskPage = lazy(() => import('@/components/TaskPage'))
 const DiffViewer = lazy(() => import('./DiffViewer'))
 const CombinedDiffViewer = lazy(() => import('./CombinedDiffViewer'))
 const RichMarkdownEditor = lazy(() => import('./RichMarkdownEditor'))
@@ -626,6 +629,16 @@ export function EditorContent({
       <div className="min-h-0 flex-1 overflow-y-auto bg-editor-surface scrollbar-sleek">
         {unresolvedEntries.map(renderConflictReviewInlineFile)}
       </div>
+    )
+  }
+
+  // [FORK] Задачи как вкладка: модуль Tasks рендерится в теле editor-таба,
+  // воркспейс-хром (таб-бар, сайдбар, чат-колонка) остаётся на месте.
+  if (activeFile.mode === 'tasks') {
+    return (
+      <React.Suspense fallback={null}>
+        <TaskPage embedded />
+      </React.Suspense>
     )
   }
 

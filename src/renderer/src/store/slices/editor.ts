@@ -2,6 +2,8 @@
 import type { StateCreator } from 'zustand'
 import type { AppState } from '../types'
 import { joinPath } from '@/lib/path'
+// [FORK] Синтетический id виртуального таба задач (openTasksEditorTab).
+import { tasksEditorTabId } from '@/lib/tasks-editor-tab'
 import { toast } from 'sonner'
 import { isPathInsideOrEqual } from '../../../../shared/cross-platform-path'
 import { resolveMarkdownLinkTarget } from '@/components/editor/markdown-internal-links'
@@ -264,7 +266,8 @@ export type OpenFile = {
    *  tabs may be culled when they vanish from a later host snapshot; locally
    *  opened tabs have no host counterpart and must survive snapshot syncs. */
   mirroredFromRuntimeSession?: boolean
-  mode: 'edit' | 'diff' | 'conflict-review' | 'markdown-preview' | 'check-details'
+  // [FORK] 'tasks' — виртуальный таб модуля Tasks (см. openTasksEditorTab).
+  mode: 'edit' | 'diff' | 'conflict-review' | 'markdown-preview' | 'check-details' | 'tasks'
 }
 
 export type ActivityBarPosition = 'top' | 'side'
@@ -559,6 +562,10 @@ export type EditorSlice = {
     state: Pick<OpenCheckRunDetailsState, 'details' | 'loading' | 'error'>
   ) => void
   reloadOpenCheckRunDetailsTab: (fileId: string) => Promise<void>
+  /** [FORK] Задачи как вкладка: виртуальный editor-таб (mode 'tasks'), в теле
+   *  которого рендерится модуль Tasks — воркспейс-хром (таб-бар, сайдбар,
+   *  чат-колонка) остаётся на месте, в отличие от полноэкранного вью 'tasks'. */
+  openTasksEditorTab: (worktreeId: string, label: string) => void
   openBranchAllDiffs: (
     worktreeId: string,
     worktreePath: string,
@@ -3160,6 +3167,38 @@ export const createEditorSlice: StateCreator<AppState, [], [], EditorSlice> = (s
       }
     })
     void openWorkspaceEditorItem(get(), id, worktreeId, label, 'check-details')
+  },
+
+  // [FORK] Задачи как вкладка. Виртуальный файл (id — синтетический URI, на
+  // диске ничего нет), contentType 'editor' — вся unified-tab-механика (чип,
+  // dedupe по группе, закрытие) переиспользуется без нового типа вкладки.
+  openTasksEditorTab: (worktreeId, label) => {
+    const id = tasksEditorTabId(worktreeId)
+    set((s) => {
+      const existing = s.openFiles.find((f) => f.id === id)
+      const openFiles = existing
+        ? s.openFiles
+        : [
+            ...s.openFiles,
+            {
+              id,
+              filePath: id,
+              relativePath: label,
+              worktreeId,
+              language: 'plaintext',
+              isDirty: false,
+              mode: 'tasks' as const
+            }
+          ]
+      return {
+        openFiles,
+        activeFileId: id,
+        activeTabType: 'editor',
+        activeFileIdByWorktree: { ...s.activeFileIdByWorktree, [worktreeId]: id },
+        activeTabTypeByWorktree: { ...s.activeTabTypeByWorktree, [worktreeId]: 'editor' }
+      }
+    })
+    void openWorkspaceEditorItem(get(), id, worktreeId, label, 'editor')
   },
 
   // Why: sidebar detail fetches can finish after a full-details tab is already

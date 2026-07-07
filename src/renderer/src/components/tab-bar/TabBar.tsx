@@ -281,11 +281,9 @@ function TabBarInner({
   const newFileShortcut = useShortcutLabel('tab.newMarkdown')
   const openMarkdownShortcut = useOptionalShortcutLabel('tab.openMarkdown')
   const generatedTabTitlesEnabled = useAppStore((s) => s.settings?.tabAutoGenerateTitle === true)
-  // [FORK] Задачи как среда основного окна: кнопка в квик-креате открывает
-  // модуль Tasks (activeView 'tasks') и подсвечена, пока он активен.
-  const tasksViewActive = useAppStore((s) => s.activeView === 'tasks')
-  const openTaskPage = useAppStore((s) => s.openTaskPage)
-  const closeTaskPage = useAppStore((s) => s.closeTaskPage)
+  // [FORK] Задачи как вкладка группы: кнопка открывает (или фокусирует)
+  // виртуальный editor-таб с модулем Tasks — воркспейс-хром остаётся на месте.
+  const openTasksEditorTab = useAppStore((s) => s.openTasksEditorTab)
   const mobileEmulatorEnabled = useAppStore((s) => s.settings?.mobileEmulatorEnabled !== false)
   const persistedUIReady = useAppStore((s) => s.persistedUIReady)
   const mobileEmulatorTabIntroDismissed = useAppStore((s) => s.mobileEmulatorTabIntroDismissed)
@@ -1080,18 +1078,15 @@ function TabBarInner({
           </button>
         ) : null}
         {!terminalOnly ? (
-          // Задачи (Linear/GitHub/…) рендерятся модулем Tasks в основном теле;
-          // повторный клик возвращает предыдущую вью (previousViewBeforeTasks).
+          // Задачи (Linear/GitHub/…) открываются вкладкой в этой группе —
+          // повторный клик просто фокусирует уже открытый таб (dedupe).
           <button
-            className={
-              tasksViewActive
-                ? 'flex h-6 w-6 items-center justify-center rounded-md bg-accent text-foreground'
-                : 'flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-            }
+            className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground"
             title={translate('components.tab-bar.openTasks', 'Tasks')}
             aria-label={translate('components.tab-bar.openTasks', 'Tasks')}
-            aria-pressed={tasksViewActive}
-            onClick={() => (tasksViewActive ? closeTaskPage() : openTaskPage())}
+            onClick={() =>
+              openTasksEditorTab(worktreeId, translate('components.tab-bar.openTasks', 'Tasks'))
+            }
           >
             <ListTodo className="size-3.5" />
           </button>

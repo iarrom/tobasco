@@ -1,4 +1,6 @@
 /* eslint-disable max-lines -- Why: runtime graph sync and mobile session-tab publication share the same injected renderer state and terminal registry. Keeping them together prevents a second store/registry reader from drifting. */
+// [FORK] Виртуальный таб задач исключается из mobile-зеркалирования.
+import { isTasksEditorTabId } from '@/lib/tasks-editor-tab'
 import {
   collectLeafIdsInOrder,
   serializePaneTree,
@@ -865,9 +867,13 @@ export function buildMobileSessionTabSnapshots(
   return snapshots
 }
 
-function isEditorSurfaceTab(tab: Pick<Tab, 'contentType'>): boolean {
+function isEditorSurfaceTab(tab: Pick<Tab, 'contentType' | 'entityId'>): boolean {
   // Why: mobile file snapshots can faithfully mirror ordinary edit/diff files;
   // conflict review and check-details tabs require metadata this contract lacks.
+  // [FORK] Виртуальный таб задач файла на диске не имеет — не зеркалим.
+  if (isTasksEditorTabId(tab.entityId)) {
+    return false
+  }
   return tab.contentType === 'editor' || tab.contentType === 'diff'
 }
 

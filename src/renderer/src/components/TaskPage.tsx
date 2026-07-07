@@ -2950,7 +2950,11 @@ const hasUpstreamCandidateDivergence = (
   !!s.sources.upstreamCandidate &&
   !sameGitHubOwnerRepo(s.sources.originCandidate, s.sources.upstreamCandidate)
 
-export default function TaskPage(): React.JSX.Element {
+/** [FORK] embedded — страница живёт внутри editor-таба (см. openTasksEditorTab):
+ *  своей кнопки Close и Esc-закрытия нет, вкладку закрывает её чип в таб-баре. */
+export default function TaskPage({
+  embedded = false
+}: { embedded?: boolean } = {}): React.JSX.Element {
   useTranslation()
   const settings = useAppStore((s) => s.settings)
   const persistedUIReady = useAppStore((s) => s.persistedUIReady)
@@ -7506,6 +7510,10 @@ export default function TaskPage(): React.JSX.Element {
   const githubTasksBusy = tasksLoading || tasksRefreshing || tasksFiltering
 
   useEffect(() => {
+    // [FORK] Во вкладке Esc-закрытие не биндим: закрыть = закрыть чип таба.
+    if (embedded) {
+      return
+    }
     // Why: when a modal is open, let it own Esc dismissal.
     if (
       dialogWorkItem ||
@@ -7552,6 +7560,7 @@ export default function TaskPage(): React.JSX.Element {
     activeModal,
     closeTaskPage,
     dialogWorkItem,
+    embedded,
     newIssueOpen,
     newLinearIssueOpen,
     newJiraIssueOpen,
@@ -8370,27 +8379,32 @@ export default function TaskPage(): React.JSX.Element {
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
                     {/* [FORK] Linear-parity Tasks page: the provider switcher
                         moved into the in-page sidebar; the top chrome keeps
-                        Close and the source-context summary. */}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7 rounded-full"
-                          onClick={closeTaskPage}
-                          aria-label={translate(
-                            'auto.components.TaskPage.1a06219d5c',
-                            'Close tasks'
-                          )}
-                        >
-                          <X className="size-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" sideOffset={6}>
-                        {translate('auto.components.TaskPage.4826fd1ad8', 'Close · Esc')}
-                      </TooltipContent>
-                    </Tooltip>
-                    <div className="mx-1 h-5 w-px bg-border/50" aria-hidden />
+                        Close and the source-context summary. Во вкладке
+                        (embedded) Close не нужен — вкладку закрывает её чип. */}
+                    {!embedded ? (
+                      <>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-7 rounded-full"
+                              onClick={closeTaskPage}
+                              aria-label={translate(
+                                'auto.components.TaskPage.1a06219d5c',
+                                'Close tasks'
+                              )}
+                            >
+                              <X className="size-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" sideOffset={6}>
+                            {translate('auto.components.TaskPage.4826fd1ad8', 'Close · Esc')}
+                          </TooltipContent>
+                        </Tooltip>
+                        <div className="mx-1 h-5 w-px bg-border/50" aria-hidden />
+                      </>
+                    ) : null}
                     <div
                       className="hidden min-w-0 max-w-[min(420px,40vw)] items-center rounded-md border border-border/50 bg-muted/35 px-2 py-1 text-xs text-muted-foreground sm:flex"
                       title={taskSourceContextSummary.title}
