@@ -171,7 +171,9 @@ export function createDocumentCommentMarkdownComponents(
   onLinkClick?: CommentMarkdownLinkClickHandler
 ): Components {
   return {
-    p: ({ children }) => <p className="my-2 first:mt-0 last:mb-0">{children}</p>,
+    // [FORK] Тот же интерлиньяж, что у li (leading-relaxed): text-sm на корне
+    // сбрасывает line-height до 20px, и абзацы читались плотнее списков.
+    p: ({ children }) => <p className="my-2 leading-relaxed first:mt-0 last:mb-0">{children}</p>,
     a: ({ href, children }) =>
       isGitHubUserAttachmentVideoLink(href, children) ? (
         // Why: GitHub's API returns uploaded videos as bare attachment links;

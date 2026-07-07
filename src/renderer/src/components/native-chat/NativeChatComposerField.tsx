@@ -149,7 +149,7 @@ export function NativeChatComposerField({
               // field-sizing-content grows the textarea with the draft between
               // min-h/max-h (auto-resize without JS), then scrolls past max-h.
               className={cn(
-                'scrollbar-sleek field-sizing-content min-h-12 max-h-64 w-full resize-none bg-transparent px-2 py-1 text-[13px] outline-none pointer-coarse:min-h-14',
+                'scrollbar-sleek field-sizing-content min-h-12 max-h-64 w-full resize-none bg-transparent px-2 py-1 text-sm outline-none pointer-coarse:min-h-14',
                 'placeholder:text-muted-foreground/60 disabled:cursor-not-allowed disabled:opacity-50'
               )}
             />

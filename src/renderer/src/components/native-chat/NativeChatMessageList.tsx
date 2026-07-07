@@ -266,7 +266,7 @@ export function NativeChatMessageList({
         // [FORK] No container padding-top: the sticky user prompt pins flush to
         // the very top. Initial breathing room lives on the inner column instead
         // (it scrolls away), so the sticky header sits against the top edge.
-        className="scrollbar-sleek h-full overflow-y-auto px-3 pb-4 sm:px-4"
+        className="scrollbar-sleek h-full overflow-y-auto px-3 pb-8 sm:px-4"
       >
         <div
           // [FORK] max-w-xl, чтобы лента сообщений совпадала по ширине с композером
