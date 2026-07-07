@@ -13,10 +13,9 @@ import {
   ChevronDown,
   GitMerge,
   LoaderCircle,
-  MessageSquarePlus,
+  Plus,
   Server,
   ServerOff,
-  Star,
   Trash2,
   Workflow
 } from 'lucide-react'
@@ -29,6 +28,8 @@ import WorktreeCardAgents from './WorktreeCardAgents'
 import SidebarWorktreeAgentsSection from './SidebarWorktreeAgentsSection'
 import { AGENT_PANEL_ENABLED } from '@/components/agent-panel/agent-panel-managed-tab'
 import { AgentSessionLaunchMenu } from '@/components/agent-panel/AgentSessionTabStrip'
+import { useAgentPanelState } from '@/components/agent-panel/agent-panel-state'
+import { SUPPRESS_WORKTREE_LIST_SCROLL_ADJUSTMENT_EVENT } from './WorktreeCardAgents'
 // [/FORK]
 import { useWorktreeAgentRows } from './useWorktreeAgentRows'
 import { WorktreeCardStatusSlot } from './WorktreeCardStatusSlot'
@@ -249,7 +250,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
   const projectGroups = useAppStore((s) => s.projectGroups)
   const newCardStyle = settings?.experimentalNewWorktreeCardStyle === true
   const compactCards = !newCardStyle && settings?.compactWorktreeCards === true
-  const activeSurfaceIsSecondary = isActiveSurface && activeSurfaceVariant === 'secondary'
   const handleEditIssue = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
@@ -1070,14 +1070,18 @@ const WorktreeCard = React.memo(function WorktreeCard({
   // card-свойства 'inline-agents': компактный пресет карточек его сбрасывает.
   const showInlineAgentList =
     (AGENT_PANEL_ENABLED || cardProps.includes('inline-agents')) && (newCardStyle || !compactCards)
-  const compactInlineAgentRows = useWorktreeAgentRows(
-    worktree.id,
-    showInlineAgentList && agentActivityDisplayMode === 'compact'
-  )
+  // [FORK] Активен всегда при инлайн-списке: строки нужны и для title-row
+  // чеврона-аккордеона (Cursor-стиль), не только для compact-режима.
+  const compactInlineAgentRows = useWorktreeAgentRows(worktree.id, showInlineAgentList)
   const compactInlineAgentRowsVisible =
     showInlineAgentList &&
     agentActivityDisplayMode === 'compact' &&
     compactInlineAgentRows.length > 0
+  const hasInlineAgentRows = showInlineAgentList && compactInlineAgentRows.length > 0
+  const sidebarAgentsCollapsed = useAgentPanelState(
+    (s) => s.sidebarAgentsCollapsedByWorktreeId[worktree.id] ?? false
+  )
+  const toggleSidebarAgentsCollapsed = useAgentPanelState((s) => s.toggleSidebarAgentsCollapsed)
   const showAggregateCacheTimer = !compactCards && !compactInlineAgentRowsVisible
   const handleOpenGitHubIssueInOrca = useCallback(
     (e: React.MouseEvent) => {
@@ -1201,7 +1205,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
   // Why: the slot owns the tiny unread/status lane; legacy keeps the bell
   // toggle, while the experimental card keeps the status glyph passive.
   const showCombinedStatusSlot = showStatus
-  const showTitleRowPrimary = compactCards && worktree.isMainWorktree && !isFolder
   const showMetaRowDetails = !newCardStyle && !compactCards && (hasDetails || hasPorts)
   const showTitleRowIndicators = (newCardStyle || compactCards) && (hasDetails || hasPorts)
   // Why: detailed cards need a stable metadata lane only when it has content.
@@ -1221,7 +1224,8 @@ const WorktreeCard = React.memo(function WorktreeCard({
   const hasMetaRow = compactCards
     ? hasMetadataBadge || cacheStartedAt != null
     : hasDetailedMetaRowContent
-  const showHeaderActions = showTitleRowPrimary || showDeleteQuickAction || showAgentChatQuickAction
+  // [FORK] Primary-звезда/бейдж убраны (Cursor-стиль): main читается именем.
+  const showHeaderActions = showDeleteQuickAction || showAgentChatQuickAction
   // Why: the hover owns full identity when the row truncates; normalize once
   // so title/branch de-dupe and identity-only hover eligibility stay in sync.
   const trimmedVisibleCardTitle = visibleCardTitle.trim()
@@ -1513,6 +1517,34 @@ const WorktreeCard = React.memo(function WorktreeCard({
               }
             />
 
+            {/* [FORK] Сама строка воркспейса — дисклоузер списка агентов
+                (Cursor-стиль): чеврон сразу за именем, без отдельной строки
+                «Агенты · N». Клик по чеврону не активирует карточку. */}
+            {hasInlineAgentRows && (
+              <button
+                type="button"
+                aria-expanded={!sidebarAgentsCollapsed}
+                aria-label="Агенты"
+                onPointerDown={stopQuickActionPointerPropagation}
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  window.dispatchEvent(
+                    new CustomEvent(SUPPRESS_WORKTREE_LIST_SCROLL_ADJUSTMENT_EVENT)
+                  )
+                  toggleSidebarAgentsCollapsed(worktree.id)
+                }}
+                className="flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground/70 hover:bg-worktree-sidebar-accent/55 hover:text-muted-foreground"
+              >
+                <ChevronDown
+                  className={cn(
+                    'size-3 transition-transform',
+                    sidebarAgentsCollapsed && '-rotate-90'
+                  )}
+                />
+              </button>
+            )}
+
             {typeof worktree.firstAgentMessageRenameError === 'string' &&
             worktree.firstAgentMessageRenameError.length > 0 &&
             !titleRenaming ? (
@@ -1544,24 +1576,8 @@ const WorktreeCard = React.memo(function WorktreeCard({
                 </TooltipContent>
               </Tooltip>
             ) : null}
-            {!compactCards && worktree.isMainWorktree && !isFolder && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge
-                    variant="outline"
-                    className="h-[16px] px-1.5 text-[10px] font-medium rounded shrink-0 leading-none text-foreground/70 border-foreground/20 bg-foreground/[0.06]"
-                  >
-                    {translate('auto.components.sidebar.WorktreeCard.7d517f82e2', 'primary')}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>
-                  {translate(
-                    'auto.components.sidebar.WorktreeCard.0777de5970',
-                    'Primary worktree (original clone directory)'
-                  )}
-                </TooltipContent>
-              </Tooltip>
-            )}
+            {/* [FORK] Без бейджа «primary» — main читается как в Cursor, просто
+                именем ветки; главный воркспейс и так первый в списке. */}
 
             {worktree.isSparse && (
               <Tooltip>
@@ -1596,28 +1612,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
 
           {showHeaderActions && (
             <div className="ml-auto flex shrink-0 items-center justify-center gap-1 pr-1.5">
-              {showTitleRowPrimary && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span
-                      className="shrink-0 inline-flex items-center"
-                      aria-label={translate(
-                        'auto.components.sidebar.WorktreeCard.0d224eff10',
-                        'Primary worktree'
-                      )}
-                    >
-                      <Star className="size-3 fill-amber-400 text-amber-400" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={8}>
-                    {translate(
-                      'auto.components.sidebar.WorktreeCard.0777de5970',
-                      'Primary worktree (original clone directory)'
-                    )}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-
               {showAgentChatQuickAction && (
                 // [FORK] Новый агент-чат на этом worktree: выбор агента в меню.
                 <AgentSessionLaunchMenu
@@ -1637,7 +1631,7 @@ const WorktreeCard = React.memo(function WorktreeCard({
                       aria-label="Новый агент-чат"
                       title="Новый агент-чат"
                     >
-                      <MessageSquarePlus className="size-3.5" />
+                      <Plus className="size-3.5" />
                     </button>
                   }
                 />
@@ -1895,16 +1889,14 @@ const WorktreeCard = React.memo(function WorktreeCard({
         titleOnlyCard ? 'py-1' : 'pt-1 pb-1',
         flushSurface ? 'ml-1 w-[calc(100%-0.25rem)]' : 'ml-1',
         'rounded-lg',
+        // [FORK] Активный воркспейс не подкрашиваем (Cursor-стиль): единственная
+        // подсветка в сайдбаре — выбранная строка агента. Drop-target и
+        // мультивыбор сохраняют свои поверхности.
         isLineageDropTarget
           ? 'border border-accent-foreground/20 bg-accent/80'
-          : isActiveSurface
-            ? activeSurfaceIsSecondary
-              ? 'border border-sidebar-ring/25 bg-sidebar-accent/45 shadow-none ring-1 ring-sidebar-ring/15'
-              : 'bg-black/[0.08] shadow-[0_1px_2px_rgba(0,0,0,0.04)] border border-black/[0.015] dark:bg-white/[0.10] dark:border-border/40 dark:shadow-[0_1px_2px_rgba(0,0,0,0.03)]'
-            : isMultiSelected
-              ? 'border border-worktree-sidebar-ring/35 bg-worktree-sidebar-accent/70 ring-1 ring-worktree-sidebar-ring/30'
-              : 'border border-transparent worktree-sidebar-card-hover',
-        isActiveSurface && isMultiSelected && 'ring-1 ring-worktree-sidebar-ring/35',
+          : isMultiSelected
+            ? 'border border-worktree-sidebar-ring/35 bg-worktree-sidebar-accent/70 ring-1 ring-worktree-sidebar-ring/30'
+            : 'border border-transparent worktree-sidebar-card-hover',
         revealHighlight && [
           'scroll-to-current-workspace-reveal-highlight',
           revealHighlightTone === 'ai' && 'scroll-to-current-workspace-reveal-highlight--ai'

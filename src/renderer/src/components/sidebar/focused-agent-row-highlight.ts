@@ -1,6 +1,9 @@
 import { useAppStore } from '@/store'
 import type { AppState } from '@/store/types'
 import { isTerminalLeafId, makePaneKey } from '../../../../shared/stable-pane-id'
+// [FORK] Подсветка выбранной в панели сессии (см. useFocusedAgentPaneKey).
+import { AGENT_PANEL_ENABLED } from '@/components/agent-panel/agent-panel-managed-tab'
+import { useAgentPanelState } from '@/components/agent-panel/agent-panel-state'
 
 export type FocusedAgentRowHighlightState = Pick<
   AppState,
@@ -58,6 +61,28 @@ export function getFocusedAgentPaneKeyForWorktree(
   return hasMigrationUnsupportedRow ? activePaneKey : null
 }
 
+/** [FORK] Строка агента совпадает с ключом подсветки: точный paneKey либо
+ *  синтетический `tabId:` только что запущенной сессии (лист ещё не известен). */
+export function agentRowMatchesFocusedKey(paneKey: string, focusedKey: string | null): boolean {
+  if (!focusedKey) {
+    return false
+  }
+  return focusedKey.endsWith(':') ? paneKey.startsWith(focusedKey) : paneKey === focusedKey
+}
+
 export function useFocusedAgentPaneKey(worktreeId: string): string | null {
-  return useAppStore((state) => getFocusedAgentPaneKeyForWorktree(state, worktreeId))
+  // [FORK] Панель агентов: подсвечиваем сессию, выбранную в панели активного
+  // воркспейса — это «активный открытый агент», единственная подсветка в
+  // сайдбаре (карточка воркспейса активность больше не подкрашивает).
+  const panelSelectedKey = useAgentPanelState((s) =>
+    AGENT_PANEL_ENABLED ? (s.selectedSessionKeyByWorktree[worktreeId] ?? null) : null
+  )
+  const worktreeIsActive = useAppStore((s) => s.activeWorktreeId === worktreeId)
+  const focusedByActivePane = useAppStore((state) =>
+    getFocusedAgentPaneKeyForWorktree(state, worktreeId)
+  )
+  if (worktreeIsActive && panelSelectedKey) {
+    return panelSelectedKey
+  }
+  return focusedByActivePane
 }

@@ -100,6 +100,9 @@ export function AgentSessionTabStrip({
   activeSessionKey: string | null
 }): React.JSX.Element {
   const selectSession = useAgentPanelState((s) => s.selectSession)
+  // При открытом основном сайдбаре навигация по сессиям уже есть в карточках
+  // воркспейсов — шапку не нагружаем, показываем только имя активной сессии.
+  const sidebarOpen = useAppStore((s) => s.sidebarOpen)
 
   const onClose = useCallback(
     (session: AgentPanelSession) => {
@@ -108,6 +111,23 @@ export function AgentSessionTabStrip({
     },
     [worktreeId]
   )
+
+  // После всех хуков: упрощённая шапка с именем активной сессии.
+  if (sidebarOpen) {
+    const activeSession = sessions.find((session) => session.key === activeSessionKey) ?? null
+    return (
+      <div className="flex h-full min-w-0 flex-1 items-center px-2">
+        {activeSession ? (
+          <span
+            className="min-w-0 truncate text-xs font-medium text-foreground/90"
+            title={activeSession.title}
+          >
+            {activeSession.title}
+          </span>
+        ) : null}
+      </div>
+    )
+  }
 
   return (
     <div

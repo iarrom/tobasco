@@ -170,7 +170,7 @@ export function MessageRow({
       >
         <div
           className={cn(
-            'max-w-[85%] rounded-xl rounded-tr-sm border border-border bg-card px-3 py-2 text-[13px] text-card-foreground',
+            'max-w-[85%] rounded-xl rounded-tr-sm border border-border bg-card px-3 py-2 text-xs text-card-foreground',
             // Pinned prompt collapses to 2 lines; click/Enter toggles full text.
             sticky && 'cursor-pointer'
           )}
@@ -199,7 +199,7 @@ export function MessageRow({
                   <CommentMarkdown
                     content={markdown}
                     variant="document"
-                    className="text-[13px]"
+                    className="text-xs"
                     onLinkClick={onLinkClick}
                     allowFileUriLinks={allowFileUriLinks}
                   />
@@ -230,7 +230,7 @@ export function MessageRow({
     <div
       ref={rowRef}
       className={cn(
-        'group relative max-w-full text-[13px] leading-relaxed text-foreground',
+        'group relative max-w-full text-xs leading-relaxed text-foreground',
         isSystem && 'text-xs text-muted-foreground'
       )}
     >
@@ -246,7 +246,7 @@ export function MessageRow({
         <CommentMarkdown
           content={markdown}
           variant="document"
-          className="text-[13px]"
+          className="text-xs"
           onLinkClick={onLinkClick}
           allowFileUriLinks={allowFileUriLinks}
         />

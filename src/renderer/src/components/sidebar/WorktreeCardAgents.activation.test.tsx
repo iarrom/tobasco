@@ -143,7 +143,8 @@ vi.mock('@/components/dashboard/DashboardAgentRow', () => ({
 }))
 
 vi.mock('./focused-agent-row-highlight', () => ({
-  useFocusedAgentPaneKey: vi.fn(() => null)
+  useFocusedAgentPaneKey: vi.fn(() => null),
+  agentRowMatchesFocusedKey: (paneKey: string, focused: string | null) => paneKey === focused
 }))
 
 describe('WorktreeCardAgents activation', () => {

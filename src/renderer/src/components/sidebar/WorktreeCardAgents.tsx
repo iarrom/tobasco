@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
 import type { DashboardAgentRow as DashboardAgentRowData } from '@/components/dashboard/useDashboardData'
 import { parsePaneKey } from '../../../../shared/stable-pane-id'
 import { dismissStaleAgentRowByKey } from '../terminal-pane/stale-agent-row'
-import { useFocusedAgentPaneKey } from './focused-agent-row-highlight'
+import { agentRowMatchesFocusedKey, useFocusedAgentPaneKey } from './focused-agent-row-highlight'
 import {
   CompactAgentExpansion,
   CompactAgentRow,
@@ -24,7 +24,10 @@ import { revealElementInScrollContainer } from './worktree-sidebar-reveal'
 import { translate } from '@/i18n/i18n'
 // [FORK] Панель агент-сессий: клик по managed-строке выбирает сессию в панели
 // вместо активации скрытого таба в группе.
-import { isAgentPanelManagedTab } from '@/components/agent-panel/agent-panel-managed-tab'
+import {
+  AGENT_PANEL_ENABLED,
+  isAgentPanelManagedTab
+} from '@/components/agent-panel/agent-panel-managed-tab'
 import { useAgentPanelState } from '@/components/agent-panel/agent-panel-state'
 // [/FORK]
 
@@ -354,7 +357,7 @@ const WorktreeCardAgentsBody = React.memo(function WorktreeCardAgentsBody({
           // Why: keep leaf rows aligned with parent rows in the same card —
           // see anyRootHasChildren above.
           reserveDisclosureGutter={isRootAgent && anyRootHasChildren && !hasChildAgents}
-          isFocusedPane={agent.paneKey === focusedAgentPaneKey}
+          isFocusedPane={agentRowMatchesFocusedKey(agent.paneKey, focusedAgentPaneKey)}
           sendTargetStatus={sendTarget?.status}
           sendTargetDisabledReason={sendTarget?.disabledReason}
           onSendTargetClick={isAgentSendTargetModeActive ? handleSendTargetClick : undefined}
@@ -400,6 +403,8 @@ const WorktreeCardAgentsBody = React.memo(function WorktreeCardAgentsBody({
         <CompactAgentRow
           agent={agent}
           now={now}
+          // [FORK] Cursor-стиль: строка агента — просто текст, без иконки тула.
+          hideIdentityIcon={AGENT_PANEL_ENABLED}
           onActivate={
             agent.rowSource === 'retained' ? handleActivateRetainedAgent : handleActivateAgentTab
           }
@@ -412,7 +417,7 @@ const WorktreeCardAgentsBody = React.memo(function WorktreeCardAgentsBody({
             hasChildAgents ? () => toggleLineageParent(agent.paneKey) : undefined
           }
           reserveDisclosureGutter={isRootAgent && anyRootHasChildren && !hasChildAgents}
-          isFocusedPane={agent.paneKey === focusedAgentPaneKey}
+          isFocusedPane={agentRowMatchesFocusedKey(agent.paneKey, focusedAgentPaneKey)}
           cacheTimerActive={cacheTimerActive}
         />
         {hasChildAgents ? (

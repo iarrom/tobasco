@@ -176,7 +176,8 @@ vi.mock('@/components/dashboard/DashboardAgentRow', () => ({
 }))
 
 vi.mock('./focused-agent-row-highlight', () => ({
-  useFocusedAgentPaneKey: vi.fn(() => mockFocusedAgentPaneKey)
+  useFocusedAgentPaneKey: vi.fn(() => mockFocusedAgentPaneKey),
+  agentRowMatchesFocusedKey: (paneKey: string, focused: string | null) => paneKey === focused
 }))
 
 vi.mock('@/components/ui/tooltip', () => ({
@@ -218,7 +219,10 @@ describe('WorktreeCardAgents', () => {
 
     expect(markup).toContain('role="group"')
     expect(markup).toContain('Run tests')
-    expect(markup).toContain('title="Codex"')
+    // [FORK] Строка агента — просто текст без иконки тула (Cursor-стиль);
+    // идентичность остаётся в secondary-тексте ("- Codex").
+    expect(markup).not.toContain('title="Codex"')
+    expect(markup).toContain('- Codex')
     expect(markup).not.toContain('data-testid="agent-row"')
   })
 

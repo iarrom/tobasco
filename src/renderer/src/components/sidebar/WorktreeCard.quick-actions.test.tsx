@@ -169,7 +169,7 @@ describe('WorktreeCard quick actions', () => {
     expect(markup).toContain('data-worktree-card-meta-row=""')
   })
 
-  it('can render the current workspace with a secondary active surface', () => {
+  it('keeps the active workspace surface unpainted (Cursor-style)', () => {
     const markup = renderToStaticMarkup(
       <WorktreeCard
         worktree={makeWorktree()}
@@ -179,8 +179,10 @@ describe('WorktreeCard quick actions', () => {
       />
     )
 
+    // [FORK] Активная карточка не подкрашивается — подсветку несёт только
+    // выбранная строка агента; data-атрибут остаётся для тестов/автоматизации.
     expect(markup).toContain('data-worktree-card-active="secondary"')
-    expect(markup).toContain('bg-sidebar-accent/45')
+    expect(markup).not.toContain('bg-sidebar-accent/45')
     expect(markup).not.toContain('bg-black/[0.08]')
   })
 
@@ -365,7 +367,8 @@ describe('WorktreeCard quick actions', () => {
     expect(markup).not.toContain('text-[11px] text-muted-foreground truncate leading-none')
   })
 
-  it('uses the left status lane and primary badge when compact cards are disabled', () => {
+  // [FORK] Primary-бейдж/звезда убраны: main читается просто именем (Cursor-стиль).
+  it('does not render the primary badge when compact cards are disabled', () => {
     worktreeCardProperties = ['status']
 
     const markup = renderToStaticMarkup(
@@ -381,12 +384,12 @@ describe('WorktreeCard quick actions', () => {
       />
     )
 
-    expect(markup).toContain('primary')
+    expect(markup).not.toContain('>primary<')
     expect(markup).not.toContain('aria-label="Primary worktree"')
     expect(markup).toContain('data-worktree-card-meta-row=""')
   })
 
-  it('keeps unread in the status lane and moves primary into the title row when compact cards are enabled', () => {
+  it('does not render the primary star when compact cards are enabled', () => {
     worktreeCardProperties = ['status']
     settings = { compactWorktreeCards: true }
 
@@ -403,7 +406,7 @@ describe('WorktreeCard quick actions', () => {
       />
     )
 
-    expect(markup).toContain('aria-label="Primary worktree"')
+    expect(markup).not.toContain('aria-label="Primary worktree"')
     expect(markup).not.toContain('>primary<')
     expect(markup).not.toContain('data-worktree-card-meta-row=""')
   })
