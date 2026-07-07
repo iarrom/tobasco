@@ -1769,9 +1769,14 @@ const WorktreeCard = React.memo(function WorktreeCard({
              read as one compact header group. */}
         {showInlineAgentList && (
           // [FORK] Сворачиваемая секция агентов (дисклоузер — чеврон в title row).
+          // -18px = внутренний свес строки (px-1 + слот кружка + зазор): текст
+          // строк агентов встаёт ровно под название воркспейса, кружок — в желобе.
           <SidebarWorktreeAgentsSection
             worktreeId={worktree.id}
-            className={hasMetaRow || remoteBranchConflict ? 'mt-0' : '-mt-1'}
+            className={cn(
+              hasMetaRow || remoteBranchConflict ? 'mt-0' : '-mt-1',
+              showCombinedStatusSlot && newCardStyle && '-ml-[18px]'
+            )}
           >
             <WorktreeCardAgents
               worktreeId={worktree.id}
