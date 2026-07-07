@@ -1,5 +1,6 @@
 // [FORK] Plain-text prompt renderer used when a sent message carries slash-tool
-// tokens: tokens paint amber (Cursor parity), the rest stays plain. Trades
+// tokens or pasted element dumps: tokens paint amber, element dumps collapse to
+// a link-blue `<tag>` chip (Cursor parity), the rest stays plain. Trades
 // markdown rendering for token highlighting — prompts built through the slash
 // tool are plain text in practice.
 
@@ -19,6 +20,16 @@ export function NativeChatPromptText({
         segment.kind === 'token' ? (
           <span key={index} className="font-medium text-warning">
             {segment.value}
+          </span>
+        ) : segment.kind === 'element' ? (
+          // Full pasted dump stays available on hover; the bubble shows only the
+          // compact link-blue element name.
+          <span
+            key={index}
+            title={segment.value.length > 600 ? `${segment.value.slice(0, 600)}…` : segment.value}
+            className="font-medium text-blue-600 dark:text-blue-400"
+          >
+            {segment.label}
           </span>
         ) : (
           <span key={index}>{segment.value}</span>
