@@ -13,6 +13,9 @@ import {
   type NativeChatEffortLevel
 } from '../../../../shared/native-chat-model-catalog'
 
+// Plan mode is deliberately NOT part of this selection: it is scoped per tab
+// (use-native-chat-plan-mode), while the model choice is a per-agent memory —
+// keeping the toggle here made Plan in one project flip every chat's composer.
 export type NativeChatModelSelection = {
   /** `/model` alias (opus/sonnet/haiku). */
   model: string
@@ -20,9 +23,6 @@ export type NativeChatModelSelection = {
   context: NativeChatContextWindow
   thinking: boolean
   fast: boolean
-  /** Cursor-style plan mode: research-only, produce a plan doc (see
-   *  native-chat-plan-instruction). Persisted per-agent like the rest. */
-  planMode: boolean
 }
 
 // Why: matches the state shown in the reference UI (Opus, High, Thinking on,
@@ -33,8 +33,7 @@ export const DEFAULT_NATIVE_CHAT_MODEL_SELECTION: NativeChatModelSelection = {
   effort: 'high',
   context: '200k',
   thinking: true,
-  fast: false,
-  planMode: false
+  fast: false
 }
 
 function isEffortLevel(value: unknown): value is NativeChatEffortLevel {
@@ -63,11 +62,7 @@ export function normalizeNativeChatModelSelection(value: unknown): NativeChatMod
       typeof raw.thinking === 'boolean'
         ? raw.thinking
         : DEFAULT_NATIVE_CHAT_MODEL_SELECTION.thinking,
-    fast: typeof raw.fast === 'boolean' ? raw.fast : DEFAULT_NATIVE_CHAT_MODEL_SELECTION.fast,
-    planMode:
-      typeof raw.planMode === 'boolean'
-        ? raw.planMode
-        : DEFAULT_NATIVE_CHAT_MODEL_SELECTION.planMode
+    fast: typeof raw.fast === 'boolean' ? raw.fast : DEFAULT_NATIVE_CHAT_MODEL_SELECTION.fast
   }
 }
 

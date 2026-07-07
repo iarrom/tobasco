@@ -464,6 +464,7 @@ function NativeChatResolvedView({
             onOptimisticSend={onOptimisticSend}
             onSlashCommand={onSlashCommand}
             modelSelection={plan.modelSelection}
+            planModeState={plan.planModeState}
             queuePaused={interactivePromptActive}
           />
         </div>

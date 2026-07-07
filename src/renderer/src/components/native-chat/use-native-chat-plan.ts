@@ -13,6 +13,7 @@ import {
   useNativeChatModelSelection,
   type NativeChatModelSelectionState
 } from './use-native-chat-model-selection'
+import { useNativeChatPlanMode, type NativeChatPlanModeState } from './use-native-chat-plan-mode'
 import {
   deriveLatestNativeChatPlan,
   type NativeChatDetectedPlan
@@ -24,6 +25,9 @@ import type { NativeChatFileLinkContext } from './native-chat-file-link'
 
 export type NativeChatPlanController = {
   modelSelection: NativeChatModelSelectionState
+  /** Per-tab Plan toggle, shared with the composer so the status line and the
+   *  send-wrapper always agree for THIS conversation only. */
+  planModeState: NativeChatPlanModeState
   planStatus: 'creating' | 'created' | null
   showPlanCard: boolean
   plan: NativeChatDetectedPlan | null
@@ -43,7 +47,8 @@ export function useNativeChatPlan(params: {
 }): NativeChatPlanController {
   const { agent, terminalTabId, targetPtyId, messages, fileLinkContext, isWorking } = params
   const modelSelection = useNativeChatModelSelection(agent)
-  const planMode = agent === 'claude' && modelSelection.selection.planMode
+  const planModeState = useNativeChatPlanMode(agent, terminalTabId)
+  const planMode = agent === 'claude' && planModeState.planMode
   const [dismissedPlanPath, setDismissedPlanPath] = useState<string | null>(null)
   // Built is tracked separately from dismissed: X only hides the card (the
   // "Created plan" line stays as the way back to the plan), while Build hides
@@ -118,7 +123,7 @@ export function useNativeChatPlan(params: {
       return
     }
     // Leave plan mode and tell the agent to implement the saved plan.
-    modelSelection.update({ planMode: false })
+    planModeState.setPlanMode(false)
     if (targetPtyId) {
       sendNativeChatMessage(
         getSettingsForAgentTabRuntimeOwner(terminalTabId),
@@ -128,7 +133,7 @@ export function useNativeChatPlan(params: {
     }
     setDismissedPlanPath(plan.path)
     setBuiltPlanPath(plan.path)
-  }, [plan, modelSelection, targetPtyId, terminalTabId])
+  }, [plan, planModeState, targetPtyId, terminalTabId])
 
   const dismissPlan = useCallback(() => {
     if (plan) {
@@ -143,13 +148,14 @@ export function useNativeChatPlan(params: {
       onPlanBuilt((path) => {
         setDismissedPlanPath(path)
         setBuiltPlanPath(path)
-        modelSelection.update({ planMode: false })
+        planModeState.setPlanMode(false)
       }),
-    [modelSelection]
+    [planModeState]
   )
 
   return {
     modelSelection,
+    planModeState,
     planStatus,
     showPlanCard: plan !== null && plan.path !== dismissedPlanPath,
     plan,

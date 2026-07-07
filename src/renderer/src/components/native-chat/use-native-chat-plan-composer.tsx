@@ -1,12 +1,12 @@
 // [FORK] Composer-side plan-mode glue: derives the toggle handler (surfaced
 // inside the "+" menu), the amber "Plan" pill shown next to the "+" button while
 // active (clicking it turns plan mode off), the plan-mode placeholder, and the
-// outgoing-prompt wrapper — all from the shared model selection. Kept out of
+// outgoing-prompt wrapper — all from the per-tab plan-mode state. Kept out of
 // NativeChatComposer so that file stays within the max-lines budget.
 
 import { ListChecks } from 'lucide-react'
 import { translate } from '@/i18n/i18n'
-import type { NativeChatModelSelectionState } from './use-native-chat-model-selection'
+import type { NativeChatPlanModeState } from './use-native-chat-plan-mode'
 import { wrapNativeChatPlanPrompt } from './native-chat-plan-instruction'
 
 export type NativeChatPlanComposer = {
@@ -23,13 +23,13 @@ export type NativeChatPlanComposer = {
 
 export function useNativeChatPlanComposer(params: {
   agent: string
-  modelSelection: NativeChatModelSelectionState
+  planModeState: NativeChatPlanModeState
 }): NativeChatPlanComposer {
-  const { agent, modelSelection } = params
+  const { agent, planModeState } = params
   const supportsPlanMode = agent === 'claude'
-  const planMode = supportsPlanMode && modelSelection.selection.planMode
+  const planMode = supportsPlanMode && planModeState.planMode
   const togglePlanMode = (): void => {
-    modelSelection.update({ planMode: !modelSelection.selection.planMode })
+    planModeState.setPlanMode(!planModeState.planMode)
   }
   return {
     supportsPlanMode,

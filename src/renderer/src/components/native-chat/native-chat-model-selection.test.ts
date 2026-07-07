@@ -26,22 +26,21 @@ describe('normalizeNativeChatModelSelection', () => {
         effort: 'low',
         context: '1m',
         thinking: false,
-        fast: true,
-        planMode: true
+        fast: true
       })
     ).toEqual({
       model: 'sonnet',
       effort: 'low',
       context: '1m',
       thinking: false,
-      fast: true,
-      planMode: true
+      fast: true
     })
   })
 
-  it('defaults planMode to false when missing or invalid', () => {
-    expect(normalizeNativeChatModelSelection({ model: 'opus' }).planMode).toBe(false)
-    expect(normalizeNativeChatModelSelection({ planMode: 'yes' }).planMode).toBe(false)
+  it('drops the legacy per-agent planMode field (now per-tab state)', () => {
+    expect(normalizeNativeChatModelSelection({ model: 'opus', planMode: true })).not.toHaveProperty(
+      'planMode'
+    )
   })
 })
 
@@ -53,8 +52,7 @@ describe('describeNativeChatModelSelection', () => {
         effort: 'high',
         context: '200k',
         thinking: true,
-        fast: false,
-        planMode: false
+        fast: false
       })
     ).toBe('Opus 4.8  High')
   })
@@ -66,8 +64,7 @@ describe('describeNativeChatModelSelection', () => {
         effort: 'xhigh',
         context: '1m',
         thinking: true,
-        fast: false,
-        planMode: false
+        fast: false
       })
     ).toBe('Opus 4.8  Extra High · 1M')
   })

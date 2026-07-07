@@ -23,6 +23,7 @@ import {
   nativeChatModelLabel
 } from '../../../../shared/native-chat-model-catalog'
 import { useNativeChatModelSelection } from '../native-chat/use-native-chat-model-selection'
+import { useNativeChatPlanMode } from '../native-chat/use-native-chat-plan-mode'
 import { buildNativeChatModelCommand } from '../native-chat/native-chat-model-command'
 import { buildNativeChatPlanExecuteMessage } from '../native-chat/native-chat-plan-build'
 import { sendNativeChatMessage } from '../native-chat/native-chat-runtime-send'
@@ -40,6 +41,7 @@ export function PlanTabHeader({
   const mdViewMode = useAppStore((s) => s.markdownViewMode[filePath] ?? 'preview')
   const setMarkdownViewMode = useAppStore((s) => s.setMarkdownViewMode)
   const modelSelection = useNativeChatModelSelection(context.agent)
+  const planModeState = useNativeChatPlanMode(context.agent, context.terminalTabId)
   const canSend = context.targetPtyId !== null
 
   const sendToAgent = (message: string): void => {
@@ -59,9 +61,9 @@ export function PlanTabHeader({
   }
 
   const handleBuild = (): void => {
-    // Leave plan mode (persisted), tell the agent to implement the plan, and let
-    // the owning chat hide its Review Plan card.
-    modelSelection.update({ planMode: false })
+    // Leave plan mode (persisted, scoped to the owning chat's tab), tell the
+    // agent to implement the plan, and let the chat hide its Review Plan card.
+    planModeState.setPlanMode(false)
     sendToAgent(buildNativeChatPlanExecuteMessage(context.relativePath))
     notifyPlanBuilt(context.planPath)
   }

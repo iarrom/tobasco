@@ -36,6 +36,7 @@ import { useNativeChatComposerKeyDown } from './use-native-chat-composer-keydown
 import { NativeChatModelPickerContainer } from './NativeChatModelPickerContainer'
 import { NativeChatComposerAddMenu } from './NativeChatComposerAddMenu'
 import type { NativeChatModelSelectionState } from './use-native-chat-model-selection'
+import type { NativeChatPlanModeState } from './use-native-chat-plan-mode'
 import { useNativeChatPlanComposer } from './use-native-chat-plan-composer'
 import { useNativeChatUniversalSlash } from './use-native-chat-universal-slash'
 import { useNativeChatComposerSend } from './use-native-chat-composer-send'
@@ -72,9 +73,12 @@ export type NativeChatComposerProps = {
    *  a small "Ran /clear" system line — slash commands aren't chat turns and
    *  otherwise leave no visible trace that anything happened. */
   onSlashCommand?: (command: string) => void
-  /** [FORK] Persisted model + plan-mode selection, owned by the view so the
+  /** [FORK] Persisted per-agent model selection, owned by the view so the
    *  composer, the plan status line, and the docked plan card share one source. */
   modelSelection: NativeChatModelSelectionState
+  /** [FORK] Per-tab Plan toggle, owned by the view (same sharing rationale) —
+   *  scoped per conversation so Plan in one project can't flip other chats. */
+  planModeState: NativeChatPlanModeState
   /** [FORK] Pause auto-flushing the send queue (e.g. an interactive question
    *  card is up and a queued turn would answer it by accident). */
   queuePaused?: boolean
@@ -116,6 +120,7 @@ export const NativeChatComposer = forwardRef<NativeChatComposerHandle, NativeCha
       onOptimisticSend,
       onSlashCommand,
       modelSelection,
+      planModeState,
       queuePaused = false
     },
     ref
@@ -124,8 +129,8 @@ export const NativeChatComposer = forwardRef<NativeChatComposerHandle, NativeCha
     // images survive the composer unmounting on a TUI/GUI toggle.
     const draftScopeKey = targetPtyId ?? terminalTabId
     const { draft, setDraft } = useNativeChatDraft(draftScopeKey)
-    // [FORK] Model + plan-mode selection is owned by the view so the plan toggle,
-    // the send-wrapper, the picker, and the plan surfaces share one source.
+    // [FORK] Model selection is owned by the view so the picker and the plan
+    // surfaces share one source; plan mode arrives separately (per-tab state).
     const { selection, update: updateModelSelection } = modelSelection
     const [caret, setCaret] = useState(draft.length)
     const [history, setHistory] = useState<HistoryState>(EMPTY_HISTORY)
@@ -180,7 +185,7 @@ export const NativeChatComposer = forwardRef<NativeChatComposerHandle, NativeCha
       planPill,
       placeholder: planPlaceholder,
       wrapOutgoing
-    } = useNativeChatPlanComposer({ agent, modelSelection })
+    } = useNativeChatPlanComposer({ agent, planModeState })
 
     const syncCaret = useCallback((el: HTMLTextAreaElement) => {
       setCaret(el.selectionStart ?? el.value.length)
