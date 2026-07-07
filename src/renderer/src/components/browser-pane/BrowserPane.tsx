@@ -25,7 +25,6 @@ import {
   ArrowRight,
   CircleCheck,
   Copy,
-  CornerDownLeft,
   Crosshair,
   Download,
   ExternalLink,
@@ -34,10 +33,8 @@ import {
   Image,
   List,
   Loader2,
-  MessageCircleQuestionMark,
   MessageSquarePlus,
   OctagonX,
-  PencilLine,
   RotateCw,
   Send,
   SquareCode,
@@ -47,7 +44,6 @@ import {
   X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { QuickLaunchAgentMenuItems } from '@/components/tab-bar/QuickLaunchButton'
 import { focusTerminalTabSurface } from '@/lib/focus-terminal-tab-surface'
 import {
@@ -75,7 +71,6 @@ import {
   redactKagiSessionToken
 } from '../../../../shared/browser-url'
 import { keybindingMatchesAction } from '../../../../shared/keybindings'
-import { getScreenSubmitModifierLabel, isScreenSubmitShortcut } from '@/lib/screen-submit-shortcut'
 import {
   browserViewportPresetToOverride,
   getBrowserViewportPreset
@@ -115,6 +110,8 @@ import { BROWSER_ANNOTATION_VIEWPORT_MESSAGE_PREFIX } from '../../../../shared/b
 import { useGrabMode } from './useGrabMode'
 import { formatGrabPayloadAsText } from './GrabConfirmationSheet'
 import { formatBrowserAnnotationsAsMarkdown } from './browser-annotation-output'
+// [FORK] ⌘L из бара аннотации — вставка в композер активного чата.
+import { requestNativeChatComposerInsert } from '@/components/native-chat/native-chat-composer-insert'
 import { isEditableKeyboardTarget } from './browser-keyboard'
 import { getBrowserPagesForWorkspace } from './browser-pane-page-selection'
 import BrowserAddressBar from './BrowserAddressBar'
@@ -218,23 +215,6 @@ type BrowserOverlayAnchor = {
   y: number
   below: boolean
 }
-
-const BROWSER_ANNOTATION_INTENT_OPTIONS = [
-  {
-    value: 'change',
-    get label() {
-      return translate('auto.components.browser.pane.BrowserPane.143204e423', 'Change')
-    },
-    icon: PencilLine
-  },
-  {
-    value: 'question',
-    get label() {
-      return translate('auto.components.browser.pane.BrowserPane.b5ba6085de', 'Question')
-    },
-    icon: MessageCircleQuestionMark
-  }
-] as const
 
 // Why: priority remains in the persisted annotation shape for backwards
 // compatibility, but the annotation UI no longer exposes urgency choices.
@@ -378,6 +358,10 @@ function getLiveBrowserAnnotationRect(
   }
 }
 
+// [FORK] Лёгкий однострочный бар вместо карточки: чип выбранного элемента +
+// растущий инпут. Enter — в список аннотаций; ⌘/Ctrl+L — в композер текущего
+// агент-чата; Esc — снять выбор. Intent и кнопки действий убраны (intent
+// остаётся 'change' в persisted-форме для совместимости).
 function PendingBrowserAnnotationCard({
   payload,
   anchor,
@@ -392,9 +376,24 @@ function PendingBrowserAnnotationCard({
   onCancel: () => void
 }): React.JSX.Element {
   const [comment, setComment] = useState('')
-  const [intent, setIntent] = useState<BrowserAnnotationIntent>('change')
   const trimmed = comment.trim()
-  const submitModifierLabel = getScreenSubmitModifierLabel()
+  const elementLabel =
+    payload.target.accessibility.accessibleName ||
+    payload.target.textSnippet ||
+    payload.target.tagName
+
+  const sendToChat = (): void => {
+    const snippet = [
+      trimmed.length > 0 ? trimmed : null,
+      `Element: ${elementLabel}`,
+      `Selector: ${payload.target.selector}`,
+      `URL: ${payload.page.sanitizedUrl}`
+    ]
+      .filter(Boolean)
+      .join('\n')
+    requestNativeChatComposerInsert(snippet)
+    onCancel()
+  }
 
   return (
     <Popover
@@ -418,7 +417,7 @@ function PendingBrowserAnnotationCard({
         collisionBoundary={portalContainer ?? undefined}
         collisionPadding={12}
         portalContainer={portalContainer}
-        className="z-40 w-[22rem] max-w-[calc(var(--radix-popover-content-available-width)-1rem)] p-3 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+        className="z-40 w-[26rem] max-w-[calc(var(--radix-popover-content-available-width)-1rem)] rounded-3xl p-1.5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
         aria-label={translate(
           'auto.components.browser.pane.BrowserPane.b472c5fe03',
           'Add browser annotation'
@@ -428,99 +427,51 @@ function PendingBrowserAnnotationCard({
           onCancel()
         }}
       >
-        <div className="mb-2 min-w-0">
-          <div className="truncate text-xs font-medium text-foreground">
-            {payload.target.accessibility.accessibleName ||
-              payload.target.textSnippet ||
-              payload.target.tagName}
-          </div>
-          <div className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
-            {payload.target.selector}
-          </div>
-        </div>
-        <Label htmlFor="browser-annotation-comment" className="sr-only">
-          {translate('auto.components.browser.pane.BrowserPane.d2a7092e6e', 'Annotation comment')}
-        </Label>
-        <textarea
-          id="browser-annotation-comment"
-          value={comment}
-          onChange={(event) => setComment(event.target.value)}
-          placeholder={translate(
-            'auto.components.browser.pane.BrowserPane.532bac48c5',
-            'Describe what the agent should change here...'
-          )}
-          maxLength={GRAB_BUDGET.annotationCommentMaxLength}
-          className="h-24 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-          autoFocus
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              event.preventDefault()
-              event.stopPropagation()
-              onCancel()
-              return
-            }
-            if (isScreenSubmitShortcut(event)) {
-              event.preventDefault()
-              event.stopPropagation()
-              if (trimmed) {
-                onAdd(trimmed, intent)
-              }
-            }
-          }}
-        />
-        <div className="mt-2 min-w-0">
-          <Label className="mb-1 block text-xs text-muted-foreground">
-            {translate('auto.components.browser.pane.BrowserPane.8f87e6c2e5', 'Intent')}
+        <div className="flex min-w-0 items-start gap-1.5">
+          <span
+            className="mt-1 max-w-[9rem] shrink-0 truncate rounded-full bg-accent/60 px-2 py-0.5 text-xs text-muted-foreground"
+            title={payload.target.selector}
+          >
+            {elementLabel}
+          </span>
+          <Label htmlFor="browser-annotation-comment" className="sr-only">
+            {translate('auto.components.browser.pane.BrowserPane.d2a7092e6e', 'Annotation comment')}
           </Label>
-          <ToggleGroup
-            type="single"
-            size="sm"
-            variant="outline"
-            value={intent}
-            onValueChange={(value) => {
-              if (value) {
-                setIntent(value as BrowserAnnotationIntent)
+          <textarea
+            id="browser-annotation-comment"
+            value={comment}
+            rows={1}
+            onChange={(event) => setComment(event.target.value)}
+            placeholder={translate(
+              'auto.components.browser.pane.BrowserPane.532bac48c5',
+              'Describe what the agent should change here...'
+            )}
+            maxLength={GRAB_BUDGET.annotationCommentMaxLength}
+            // field-sizing-content: одна строка, растёт с переносами/вводом до max-h.
+            className="scrollbar-sleek field-sizing-content max-h-40 min-h-7 w-full min-w-0 flex-1 resize-none bg-transparent px-2 py-1 text-sm outline-none placeholder:text-muted-foreground/60"
+            autoFocus
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault()
+                event.stopPropagation()
+                onCancel()
+                return
+              }
+              if (event.key === 'l' && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault()
+                event.stopPropagation()
+                sendToChat()
+                return
+              }
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault()
+                event.stopPropagation()
+                if (trimmed) {
+                  onAdd(trimmed, 'change')
+                }
               }
             }}
-            className="h-8 w-full [&_[data-slot=toggle-group-item]]:h-8 [&_[data-slot=toggle-group-item]]:flex-1 [&_[data-slot=toggle-group-item]]:px-2"
-            aria-label={translate(
-              'auto.components.browser.pane.BrowserPane.0cb3bd6221',
-              'Annotation intent'
-            )}
-          >
-            {BROWSER_ANNOTATION_INTENT_OPTIONS.map((option) => {
-              const Icon = option.icon
-              return (
-                <ToggleGroupItem
-                  key={option.value}
-                  value={option.value}
-                  aria-label={option.label}
-                  className="gap-1.5 text-xs data-[state=on]:border-foreground/20 data-[state=on]:bg-foreground/10 data-[state=on]:text-foreground data-[state=on]:shadow-xs data-[state=on]:hover:bg-foreground/15 data-[state=on]:hover:text-foreground"
-                >
-                  <Icon className="size-3.5" />
-                  <span>{option.label}</span>
-                </ToggleGroupItem>
-              )
-            })}
-          </ToggleGroup>
-        </div>
-        <div className="mt-3 flex justify-end gap-2">
-          <Button size="sm" variant="ghost" className="h-8" onClick={onCancel}>
-            {translate('auto.components.browser.pane.BrowserPane.fa6ea61de3', 'Cancel')}
-          </Button>
-          <Button
-            size="sm"
-            className="h-8 gap-1.5"
-            disabled={!trimmed}
-            onClick={() => onAdd(trimmed, intent)}
-          >
-            <MessageSquarePlus className="size-3.5" />
-            {translate('auto.components.browser.pane.BrowserPane.90d021f2ad', 'Add')}
-            <span className="ml-1 inline-flex items-center gap-0.5 rounded border border-white/20 px-1.5 py-0.5 text-[10px] font-medium leading-none text-current/80">
-              <span>{submitModifierLabel}</span>
-              <CornerDownLeft className="size-3" />
-            </span>
-          </Button>
+          />
         </div>
       </PopoverContent>
     </Popover>

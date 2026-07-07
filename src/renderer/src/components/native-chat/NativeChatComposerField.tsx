@@ -1,5 +1,12 @@
 import type { ClipboardEventHandler, KeyboardEventHandler, RefObject } from 'react'
+import { useEffect } from 'react'
 import { ImageOff } from 'lucide-react'
+// [FORK] Внешняя вставка в драфт (⌘L из аннотаций браузера и т.п.).
+import {
+  appendToComposerDraft,
+  NATIVE_CHAT_COMPOSER_INSERT_EVENT,
+  type NativeChatComposerInsertDetail
+} from './native-chat-composer-insert'
 import { cn } from '@/lib/utils'
 import { NATIVE_FILE_DROP_TARGET } from '../../../../shared/native-file-drop'
 import type { ComposerAutocomplete, UniversalSlashItem } from './native-chat-composer-state'
@@ -93,6 +100,22 @@ export function NativeChatComposerField({
   onSend,
   onStop
 }: NativeChatComposerFieldProps): React.JSX.Element {
+  // [FORK] Вставка извне (⌘L из аннотаций браузера): дописываем в драфт с
+  // новой строки и возвращаем фокус в поле.
+  useEffect(() => {
+    const onInsert = (event: Event): void => {
+      const detail = (event as CustomEvent<NativeChatComposerInsertDetail>).detail
+      const textarea = textareaRef.current
+      if (!detail?.text || !textarea || disabled) {
+        return
+      }
+      onDraftChange(appendToComposerDraft(draft, detail.text), textarea)
+      textarea.focus()
+    }
+    window.addEventListener(NATIVE_CHAT_COMPOSER_INSERT_EVENT, onInsert)
+    return () => window.removeEventListener(NATIVE_CHAT_COMPOSER_INSERT_EVENT, onInsert)
+  }, [disabled, draft, onDraftChange, textareaRef])
+
   return (
     <div className="shrink-0 bg-background">
       <div className="px-3 py-2 sm:px-4">
