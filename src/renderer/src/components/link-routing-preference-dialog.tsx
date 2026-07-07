@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { ExternalLink, Settings } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -14,12 +14,14 @@ import { Badge } from '@/components/ui/badge'
 import { ShortcutKeyCombo } from '@/components/ShortcutKeyCombo'
 import { useAppStore } from '@/store'
 import { translate } from '@/i18n/i18n'
-
-type LinkRoutingPreferenceDialogOptions = {
-  url?: string
-  preview?: boolean
-  openLinksInAppDefault?: boolean
-}
+// [FORK] Context + hook live in a React-only leaf module so dev HMR can never
+// re-run createContext out from under the mounted provider (see that file).
+// Keeping this module component-only also makes it a clean Fast Refresh boundary.
+import {
+  LinkRoutingPreferenceDialogContext,
+  type LinkRoutingPreferenceDialogContextValue,
+  type LinkRoutingPreferenceDialogOptions
+} from './link-routing-preference-dialog-context'
 
 type LinkRoutingPreferenceDialogRequest = {
   id: number
@@ -27,14 +29,8 @@ type LinkRoutingPreferenceDialogRequest = {
   resolve: (openInOrca: boolean) => void
 }
 
-type LinkRoutingPreferenceDialogContextValue = (
-  options?: LinkRoutingPreferenceDialogOptions
-) => Promise<boolean>
-
 const PREVIEW_STORAGE_KEY = 'orca.previewLinkRoutingPreferenceDialog'
 const PREVIEW_DEFAULT_STORAGE_KEY = `${PREVIEW_STORAGE_KEY}.default`
-const LinkRoutingPreferenceDialogContext =
-  createContext<LinkRoutingPreferenceDialogContextValue | null>(null)
 
 function displayHostForUrl(url: string | undefined): string | null {
   if (!url) {
@@ -247,14 +243,4 @@ export function LinkRoutingPreferenceDialogProvider({
       </Dialog>
     </LinkRoutingPreferenceDialogContext.Provider>
   )
-}
-
-export function useLinkRoutingPreferenceDialog(): LinkRoutingPreferenceDialogContextValue {
-  const requestPreference = useContext(LinkRoutingPreferenceDialogContext)
-  if (!requestPreference) {
-    throw new Error(
-      'useLinkRoutingPreferenceDialog must be used inside LinkRoutingPreferenceDialogProvider'
-    )
-  }
-  return requestPreference
 }

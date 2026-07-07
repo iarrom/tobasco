@@ -6,7 +6,7 @@ import type { CSSProperties } from 'react'
 import type { IDisposable } from '@xterm/xterm'
 import { useAppStore } from '../../store'
 import { isUnifiedTabPinned } from '@/store/pinned-tab-close-guard'
-import { useLinkRoutingPreferenceDialog } from '@/components/link-routing-preference-dialog'
+import { useLinkRoutingPreferenceDialog } from '@/components/link-routing-preference-dialog-context'
 import { DaemonActionDialog, useDaemonActions } from '@/components/shared/useDaemonActions'
 import {
   DEFAULT_TERMINAL_DIVIDER_DARK,
