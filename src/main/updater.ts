@@ -1,4 +1,6 @@
 /* eslint-disable max-lines */
+// [FORK] Обновления идут из релизов форка.
+import { FORK_RELEASES_LATEST_DOWNLOAD } from './fork-release-feed'
 import { app, BrowserWindow, powerMonitor } from 'electron'
 import type { NsisUpdater } from 'electron-updater'
 import { is } from '@electron-toolkit/utils'
@@ -899,7 +901,7 @@ async function pinDefaultReleaseFeed(
   } else {
     clearPrereleaseFallbackContext()
     clearPublishingWindowLastGoodCheck()
-    const url = 'https://github.com/stablyai/orca/releases/latest/download'
+    const url = FORK_RELEASES_LATEST_DOWNLOAD
     console.info(
       `[updater] release feed fallback: current=${currentVersion} includePrerelease=${includePrerelease} → ${url}`
     )
@@ -1290,7 +1292,7 @@ export function setupAutoUpdater(
   // moving /latest redirect changing between check and download.
   autoUpdater.setFeedURL({
     provider: 'generic',
-    url: 'https://github.com/stablyai/orca/releases/latest/download'
+    url: FORK_RELEASES_LATEST_DOWNLOAD
   })
 
   if (autoUpdaterInitialized) {

@@ -54,6 +54,10 @@ module.exports = {
   // (TCC-права, Gatekeeper, Keychain) с официальным Orca.app.
   appId: 'com.iarrom.tobasco',
   productName: 'Tobasco',
+  // [FORK] publish-конфиг нужен, чтобы electron-builder генерировал
+  // latest-mac.yml для авто-апдейтера; сама публикация — только явным
+  // `--publish always` (или GH_TOKEN в CI), локальная сборка не публикует.
+  publish: { provider: 'github', owner: 'iarrom', repo: 'tobasco' },
   directories: {
     buildResources: 'resources/build'
   },
