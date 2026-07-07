@@ -27,7 +27,9 @@ import { AGENT_PANEL_ENABLED } from '@/components/agent-panel/agent-panel-manage
 import { useAgentPanelState } from '@/components/agent-panel/agent-panel-state'
 // [/FORK]
 
-function getResumeLaunchPlatform(worktreeId: string): NodeJS.Platform {
+// [FORK] exported: native-chat dead-agent revival builds the same resume plan
+// for an in-pane relaunch (native-chat-agent-revival.ts).
+export function getResumeLaunchPlatform(worktreeId: string): NodeJS.Platform {
   const state = useAppStore.getState()
   const worktree = state.getKnownWorktreeById(worktreeId)
   const repo = worktree ? state.repos.find((entry) => entry.id === worktree.repoId) : null

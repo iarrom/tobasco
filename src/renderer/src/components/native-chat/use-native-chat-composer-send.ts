@@ -5,6 +5,7 @@
 
 import { useCallback, type Dispatch, type SetStateAction } from 'react'
 import { emitNativeChatMessageSent } from '@/lib/native-chat-telemetry'
+import { sendNativeChatWithAgentGuard } from './native-chat-agent-revival'
 import {
   sendNativeChatMessage,
   sendNativeChatMessageWithImageAttachments,
@@ -38,15 +39,24 @@ export function useNativeChatDeliverMessage(params: {
       // shows the raw text. Wrapping happens at delivery time so a queued turn
       // respects the plan-mode state in effect when it actually goes out.
       const outgoingText = wrapOutgoing(text, false)
-      if (imagePaths.length > 0) {
-        sendNativeChatMessageWithImageAttachments(target.settings, target.ptyId, outgoingText, [
-          ...imagePaths
-        ])
-      } else if (text.trim().length > 0) {
-        sendNativeChatMessage(target.settings, target.ptyId, outgoingText)
-      } else {
-        submitNativeChatPrompt(target.settings, target.ptyId)
-      }
+      // The liveness guard keeps a message from executing in the bare shell
+      // when the agent died (e.g. across host sleep): dead panes get their
+      // agent resumed in place before the pty write goes out.
+      sendNativeChatWithAgentGuard({
+        target,
+        agent,
+        perform: () => {
+          if (imagePaths.length > 0) {
+            sendNativeChatMessageWithImageAttachments(target.settings, target.ptyId, outgoingText, [
+              ...imagePaths
+            ])
+          } else if (text.trim().length > 0) {
+            sendNativeChatMessage(target.settings, target.ptyId, outgoingText)
+          } else {
+            submitNativeChatPrompt(target.settings, target.ptyId)
+          }
+        }
+      })
       onOptimisticSend?.(text, [...imagePaths])
       // U10 telemetry — adoption + local-vs-remote runtime split.
       emitNativeChatMessageSent({
@@ -115,7 +125,13 @@ export function useNativeChatComposerSend(params: {
     // so the GUI chips and TUI input stay in sync: images, text, Enter atomically.
     const isSlashCommand = isSlashCommandDraft(text)
     if (isSlashCommand) {
-      sendNativeChatMessage(target.settings, target.ptyId, text)
+      // Guarded like chat turns: a slash command typed at a dead agent would
+      // otherwise run in the bare shell (e.g. `/clear` → command not found).
+      sendNativeChatWithAgentGuard({
+        target,
+        agent,
+        perform: () => sendNativeChatMessage(target.settings, target.ptyId, text)
+      })
       // Slash commands don't echo a user bubble, but DO surface a small "Ran
       // /clear" system line so the command leaves a visible trace.
       onSlashCommand?.(text.trim())

@@ -50,6 +50,19 @@ describe('selectNativeChatViewState', () => {
     expect(state.kind).toBe('empty')
   })
 
+  // [FORK] fresh launch: transcript file doesn't exist yet, but the optimistic
+  // launch-prompt echo is already in messages — it must render, not blank out.
+  it('renders optimistic messages while the transcript does not exist yet', () => {
+    const state = selectNativeChatViewState(
+      session({
+        status: 'error',
+        error: 'No transcript found for claude session sess'
+      })
+    )
+    expect(state).toEqual({ kind: 'ready', isWorking: false })
+  })
+  // [/FORK]
+
   it('maps empty when there are no messages', () => {
     expect(selectNativeChatViewState(session({ messages: [], status: 'ready' })).kind).toBe('empty')
   })

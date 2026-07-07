@@ -28,6 +28,13 @@ export function selectNativeChatViewState(session: NativeChatSession): NativeCha
     // friendly empty state instead of a scary error. The backend emits this
     // exact prefix in transcript-reader / transcript-read-cache.
     if (message.startsWith('No transcript found')) {
+      // [FORK] Optimistic echoes (launch prompt, pending sends) win over the
+      // no-transcript empty state — a fresh launch has no JSONL for the first
+      // seconds and blanking the just-sent prompt reads as a UI reset.
+      if (session.messages.length > 0) {
+        return { kind: 'ready', isWorking: false }
+      }
+      // [/FORK]
       return { kind: 'empty' }
     }
     return { kind: 'error', message }

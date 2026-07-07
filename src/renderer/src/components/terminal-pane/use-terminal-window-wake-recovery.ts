@@ -1,6 +1,9 @@
 import { useEffect } from 'react'
 import type { PaneManager } from '@/lib/pane-manager/pane-manager'
 import { recoverVisibleTerminalWindowWake } from './terminal-visibility-resume'
+// [FORK] Dead-agent status reconcile on wake (throttled inside the module).
+import { reconcileAgentStatusesAfterWake } from '@/lib/agent-status-wake-reconcile'
+// [/FORK]
 
 type UseTerminalWindowWakeRecoveryArgs = {
   isVisible: boolean
@@ -41,6 +44,10 @@ export function useTerminalWindowWakeRecovery({
         manager,
         isActive: isActiveRef.current
       })
+      // [FORK] Agents can die during host sleep without a pty:exit (their shell
+      // survives), leaving a stale 'working' status; verify and correct here.
+      reconcileAgentStatusesAfterWake()
+      // [/FORK]
       if (typeof requestAnimationFrame !== 'function') {
         return
       }
