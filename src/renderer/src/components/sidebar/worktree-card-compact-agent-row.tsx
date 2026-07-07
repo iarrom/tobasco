@@ -216,9 +216,9 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
           строки, куда кружок встаёт, не сдвигая текст. */}
       <span className="flex w-2.5 shrink-0 items-center justify-center" aria-hidden>
         {rowIndicator === 'draft' ? (
-          <span className="size-2 rounded-full bg-muted-foreground/40" />
+          <span className="size-1.5 rounded-full bg-muted-foreground/40" />
         ) : rowIndicator === 'unread-done' ? (
-          <span className="size-2 rounded-full bg-amber-500" />
+          <span className="size-1.5 rounded-full bg-amber-500" />
         ) : null}
       </span>
       {!hideIdentityIcon && (
