@@ -22,8 +22,8 @@ type WorktreeCardStatusSlotProps = {
   newCardStyle?: boolean
   hasBranchIdentity?: boolean
   branchIdentityLabel?: string
-  /** [FORK] Активность агента уже показывает его строка под карточкой — слот
-   *  оставляет только пассивные роли (PR/ветка/unread), без дубля прогресса. */
+  /** [FORK] Активность и unread уже показывают строки агентов под карточкой —
+   *  слот оставляет только пассивные роли (PR/ветка), без дублей. */
   suppressAgentActivity?: boolean
   className?: string
 }
@@ -129,12 +129,19 @@ export function WorktreeCardStatusSlot({
       : canShowBranchStatus
         ? (branchIdentityLabel ?? getDefaultBranchIdentityLabel())
         : statusLabel
+  // [FORK] With agent rows under the card, their amber dots own the unread cue —
+  // the card-level badge would double it.
+  const cardCarriesUnread = isUnread && !suppressAgentActivity
   const passiveStatusTooltip =
-    newCardStyle && isUnread ? `${passiveStatusLabel} · Unread` : passiveStatusLabel
+    newCardStyle && cardCarriesUnread ? `${passiveStatusLabel} · Unread` : passiveStatusLabel
   // Why: working and permission already own the new-card status lane, but
   // unread state should still surface in tooltip/sr-only copy and reappear afterward.
   const showNewCardUnreadAlert =
-    newCardStyle && isUnread && showStatus && status !== 'working' && status !== 'permission'
+    newCardStyle &&
+    cardCarriesUnread &&
+    showStatus &&
+    status !== 'working' &&
+    status !== 'permission'
   const reviewStatusIconClassName = compactReviewAndBranchStatusIconClassName
   const branchStatusIcon = <GitBranch className={branchStatusIconClassName} aria-hidden="true" />
   const passiveStatus =
