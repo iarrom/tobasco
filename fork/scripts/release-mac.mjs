@@ -60,25 +60,53 @@ for (const line of readFileSync(envFile, 'utf8').split('\n')) {
   }
 }
 
-// 3. Быстрая проверка, что Developer ID вообще есть в Keychain или задан CSC_LINK.
+// 3. Identity подписи: .p12 через CSC_LINK либо «Developer ID Application»
+// прямо из Keychain (пароль от .p12 тогда не нужен).
 const identities = spawnSync('security', ['find-identity', '-v', '-p', 'codesigning'], {
   encoding: 'utf8'
 }).stdout
-if (!identities.includes('Developer ID Application') && !process.env.CSC_LINK) {
+const keychainIdentity = identities
+  .split('\n')
+  .find((line) => line.includes('Developer ID Application'))
+  ?.match(/"(.+)"/)?.[1]
+if (!process.env.CSC_LINK && !keychainIdentity) {
   console.error(
     'В Keychain нет «Developer ID Application» и CSC_LINK не задан.\n' +
       'Создай сертификат (шаг 2 в шапке скрипта) или укажи CSC_LINK на .p12.'
   )
   process.exit(1)
 }
+if (!process.env.CSC_LINK && keychainIdentity) {
+  // electron-builder и build-computer-macos возьмут identity из связки.
+  process.env.CSC_NAME = keychainIdentity
+  console.log(`▶ Подпись из Keychain: ${keychainIdentity}`)
+}
+for (const key of ['APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID']) {
+  if (!process.env[key]) {
+    console.error(`В ${envFile} не хватает ${key} — нотаризация не пройдёт.`)
+    process.exit(1)
+  }
+}
 
-// 4. Релизная сборка апстрима: hardened runtime + notarize + Swift-хелпер.
-console.log('▶ pnpm run build:mac:release')
-execFileSync('pnpm', ['run', 'build:mac:release'], {
-  cwd: repoRoot,
-  stdio: 'inherit',
-  env: process.env
-})
+// 4. Релизные шаги апстрима: hardened runtime + notarize + Swift-хелпер.
+// В Keychain-режиме зовём их напрямую (upstream-верификатор требует CSC_LINK,
+// который в этом режиме не нужен); с CSC_LINK — штатный build:mac:release.
+const releaseEnv = { ...process.env, ORCA_MAC_RELEASE: '1' }
+const releaseSteps = process.env.CSC_LINK
+  ? [['pnpm', ['run', 'build:mac:release']]]
+  : [
+      ['pnpm', ['run', 'build:desktop']],
+      ['pnpm', ['run', 'build:computer-macos']],
+      ['pnpm', ['run', 'ensure:electron-runtime']],
+      [
+        'pnpm',
+        ['exec', 'electron-builder', '--config', 'config/electron-builder.config.cjs', '--mac']
+      ]
+    ]
+for (const [cmd, cmdArgs] of releaseSteps) {
+  console.log(`▶ ${cmd} ${cmdArgs.join(' ')}`)
+  execFileSync(cmd, cmdArgs, { cwd: repoRoot, stdio: 'inherit', env: releaseEnv })
+}
 
 const dist = path.join(repoRoot, 'dist')
 const dmgs = readdirSync(dist).filter((f) => f.endsWith('.dmg'))
