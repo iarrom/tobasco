@@ -14,7 +14,8 @@ const entitlementsPath = path.join(
   'build',
   'entitlements.computer-use.mac.plist'
 )
-const bundleId = process.env.ORCA_COMPUTER_MACOS_BUNDLE_ID ?? 'com.stablyai.orca.computer-use'
+// [FORK] Хелпер наследует bundle-префикс форка (см. appId в electron-builder).
+const bundleId = process.env.ORCA_COMPUTER_MACOS_BUNDLE_ID ?? 'com.iarrom.tobasco.computer-use'
 const displayName = 'Orca Computer Use'
 const signingIdentity = resolveSigningIdentity()
 const universalTriples = ['arm64-apple-macosx', 'x86_64-apple-macosx']

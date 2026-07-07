@@ -43,7 +43,9 @@ const winSpeechNativeResource = {
 
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
-  appId: 'com.stablyai.orca',
+  // [FORK] Свой bundle id: подписанный Tobasco не должен делить identity
+  // (TCC-права, Gatekeeper, Keychain) с официальным Orca.app.
+  appId: 'com.iarrom.tobasco',
   productName: 'Tobasco',
   directories: {
     buildResources: 'resources/build'
