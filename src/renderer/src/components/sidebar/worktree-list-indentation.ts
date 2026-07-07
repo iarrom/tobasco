@@ -46,9 +46,10 @@ export function getWorktreeCardContentIndent(args: {
   groupDepth: number
   lineageDepth: number
 }): number {
-  const groupSteps = args.isGrouped ? clampDepth(args.groupDepth) + 1 : 0
-  const projectCardIndent = args.isGrouped ? PROJECT_WORKTREE_CARD_EXTRA_INDENT : 0
-  return (groupSteps + clampDepth(args.lineageDepth)) * SIDEBAR_TREE_INDENT + projectCardIndent
+  // [FORK] Cursor-стиль: вложенность под заголовком проекта не сдвигает
+  // карточки вправо — иерархию несёт сам заголовок. Шаг остаётся только у
+  // lineage-детей (настоящее дерево воркспейсов).
+  return clampDepth(args.lineageDepth) * SIDEBAR_TREE_INDENT
 }
 
 export function getFolderBackedRepoWorktreeCardContentIndent(args: {

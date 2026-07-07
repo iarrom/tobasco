@@ -46,18 +46,19 @@ describe('worktree list indentation', () => {
     )
   })
 
-  it('indents workspace content one step deeper than its containing project header', () => {
+  // [FORK] Группа не двигает карточки — иерархию несёт заголовок проекта.
+  it('keeps grouped workspace content flush with the list', () => {
     expect(getWorktreeCardContentIndent({ isGrouped: true, groupDepth: 0, lineageDepth: 0 })).toBe(
-      20
+      0
     )
     expect(getWorktreeCardContentIndent({ isGrouped: true, groupDepth: 1, lineageDepth: 0 })).toBe(
-      38
+      0
     )
   })
 
-  it('adds lineage depth after project/group depth', () => {
+  it('keeps lineage depth steps regardless of grouping', () => {
     expect(getWorktreeCardContentIndent({ isGrouped: true, groupDepth: 1, lineageDepth: 2 })).toBe(
-      74
+      36
     )
   })
 
@@ -133,9 +134,9 @@ describe('worktree list indentation', () => {
 
     expect(geometry).toEqual({
       surfaceInset: 14,
-      cardContentIndent: 24
+      cardContentIndent: 0
     })
-    expect(getFlushCardContentStart(geometry)).toBe(38)
+    expect(getFlushCardContentStart(geometry)).toBe(20)
   })
 
   it('uses comparable repo worktree geometry for experimental folder-scanned folder workspaces', () => {
@@ -181,9 +182,9 @@ describe('worktree list indentation', () => {
 
     expect(geometry).toEqual({
       surfaceInset: 14,
-      cardContentIndent: 24
+      cardContentIndent: 0
     })
-    expect(getFlushCardContentStart(geometry)).toBe(38)
+    expect(getFlushCardContentStart(geometry)).toBe(20)
   })
 
   it('keeps experimental flat folder workspaces on normal worktree geometry', () => {
