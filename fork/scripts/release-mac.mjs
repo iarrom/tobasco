@@ -156,3 +156,31 @@ for (const dmg of dmgs) {
   console.log(`  ${path.join(dist, dmg)}`)
 }
 console.log('\nПроверка: spctl -a -t open --context context:primary-signature -v <dmg>')
+
+// 6. --publish: GitHub-релиз с комплектом автообновлений (dmg + zip +
+// blockmap + latest-mac.yml). Релиз не помечается pre-release, иначе
+// /releases/latest (фид апдейтера) его не увидит.
+if (process.argv.includes('--publish')) {
+  const version = JSON.parse(readFileSync(path.join(repoRoot, 'package.json'), 'utf8')).version
+  const tag = `v${version}`
+  const assets = readdirSync(dist)
+    .filter((f) => f.endsWith('.dmg') || f.endsWith('.zip') || f.endsWith('.zip.blockmap'))
+    .concat(['latest-mac.yml'])
+    .map((f) => path.join(dist, f))
+  console.log(`\n▶ gh release create ${tag} (${assets.length} ассетов)`)
+  execFileSync(
+    'gh',
+    [
+      'release',
+      'create',
+      tag,
+      '--repo',
+      'iarrom/tobasco',
+      '--title',
+      `Tobasco ${version}`,
+      '--generate-notes',
+      ...assets
+    ],
+    { cwd: repoRoot, stdio: 'inherit' }
+  )
+}
