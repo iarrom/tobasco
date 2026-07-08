@@ -23,6 +23,7 @@ const WorktreeMetaDialog = lazyWithRetry(() => import('./WorktreeMetaDialog'))
 const RemoveFolderDialog = lazyWithRetry(() => import('./RemoveFolderDialog'))
 const WorktreeVisibilityDialog = lazyWithRetry(() => import('./WorktreeVisibilityDialog'))
 const OrcaYamlTrustDialog = lazyWithRetry(() => import('./OrcaYamlTrustDialog'))
+const ForgetSshWorkspaceDialog = lazyWithRetry(() => import('./ForgetSshWorkspaceDialog'))
 
 // [FORK] 180 (upstream 220): with the titlebar app name removed the strip fits,
 // letting the sidebar compress further like Cursor's.
@@ -219,6 +220,7 @@ function Sidebar({
         {activeModal === 'confirm-remove-folder' ? <RemoveFolderDialog /> : null}
         {activeModal === 'worktree-visibility' ? <WorktreeVisibilityDialog /> : null}
         {activeModal === 'confirm-orca-yaml-hooks' ? <OrcaYamlTrustDialog /> : null}
+        {activeModal === 'forget-ssh-workspace' ? <ForgetSshWorkspaceDialog /> : null}
       </React.Suspense>
       {sidebarOpen ? (
         <WorkspaceKanbanDrawer
