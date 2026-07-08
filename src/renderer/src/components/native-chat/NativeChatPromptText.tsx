@@ -15,7 +15,9 @@ export function NativeChatPromptText({
   className?: string
 }): React.JSX.Element {
   return (
-    <div className={cn('whitespace-pre-wrap break-words text-[13px]', className)}>
+    // text-sm: тот же 14px, что у markdown-ответов (CommentMarkdown) — размер
+    // текста в пузыре пользователя и в ленте не должен расходиться.
+    <div className={cn('whitespace-pre-wrap break-words text-sm', className)}>
       {segments.map((segment, index) =>
         segment.kind === 'token' ? (
           <span key={index} className="font-medium text-warning">

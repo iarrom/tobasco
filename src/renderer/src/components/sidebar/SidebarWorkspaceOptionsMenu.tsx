@@ -49,6 +49,9 @@ const SidebarWorkspaceOptionsMenu = React.memo(function SidebarWorkspaceOptionsM
   const setGroupBy = useAppStore((s) => s.setGroupBy)
   const projectOrderBy = useAppStore((s) => s.projectOrderBy)
   const setProjectOrderBy = useAppStore((s) => s.setProjectOrderBy)
+  // [FORK] Переключение классического списка воркспейсов и Cursor-вида.
+  const sidebarViewMode = useAppStore((s) => s.sidebarViewMode)
+  const setSidebarViewMode = useAppStore((s) => s.setSidebarViewMode)
 
   const [open, setOpen] = useState(false)
   const { hostOptions } = useSidebarHostScopeOptions()
@@ -163,6 +166,29 @@ const SidebarWorkspaceOptionsMenu = React.memo(function SidebarWorkspaceOptionsM
             setVisibleWorkspaceHostIds={setVisibleWorkspaceHostIds}
           />
         )}
+
+        {/* [FORK] Вид сайдбара: классический список или Cursor-стиль (агенты). */}
+        <DropdownMenuLabel>
+          {translate(
+            'auto.components.sidebar.SidebarWorkspaceOptionsMenu.sidebarView',
+            'Sidebar view'
+          )}
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={sidebarViewMode}
+          onValueChange={(v) => setSidebarViewMode(v === 'agents' ? 'agents' : 'workspaces')}
+        >
+          <DropdownMenuRadioItem value="workspaces" onSelect={(e) => e.preventDefault()}>
+            {translate(
+              'auto.components.sidebar.SidebarWorkspaceOptionsMenu.viewWorkspaces',
+              'Workspaces'
+            )}
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="agents" onSelect={(e) => e.preventDefault()}>
+            {translate('auto.components.sidebar.SidebarWorkspaceOptionsMenu.viewAgents', 'Agents')}
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
 
         <DropdownMenuLabel>
           {translate('auto.components.sidebar.SidebarWorkspaceOptionsMenu.dc0bb670bc', 'Group by')}

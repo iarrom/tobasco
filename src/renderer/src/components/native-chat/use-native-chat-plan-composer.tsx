@@ -40,7 +40,7 @@ export function useNativeChatPlanComposer(params: {
         type="button"
         onClick={togglePlanMode}
         aria-label={translate('components.native-chat.composer.planMode.disable', 'Turn off Plan')}
-        className="flex h-8 items-center gap-1 rounded-full px-2.5 text-xs font-medium text-warning outline-none transition-colors hover:bg-warning/10 focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:min-h-11"
+        className="flex h-7 items-center gap-1 rounded-full px-2.5 text-xs font-medium text-warning outline-none transition-colors hover:bg-warning/10 focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:min-h-11"
       >
         <ListChecks className="size-3.5" />
         <span>{translate('components.native-chat.composer.planMode.active', 'Plan')}</span>

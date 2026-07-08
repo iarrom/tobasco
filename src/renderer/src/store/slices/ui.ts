@@ -25,6 +25,7 @@ import type {
   WorkspaceStatusDefinition,
   AgentActivityDisplayMode,
   ProjectOrderBy,
+  SidebarViewMode,
   WorktreeCardProperty,
   WorktreeCardMode,
   WorkspaceHostOrder,
@@ -880,6 +881,9 @@ export type UISlice = {
   setWorktreeCardProperties: (properties: readonly WorktreeCardProperty[]) => void
   agentActivityDisplayMode: AgentActivityDisplayMode
   setAgentActivityDisplayMode: (mode: AgentActivityDisplayMode) => void
+  // [FORK] Cursor-style agents view toggle for the left sidebar.
+  sidebarViewMode: SidebarViewMode
+  setSidebarViewMode: (mode: SidebarViewMode) => void
   workspaceStatuses: WorkspaceStatusDefinition[]
   setWorkspaceStatuses: (statuses: WorkspaceStatusDefinition[]) => void
   workspaceBoardOpacity: number
@@ -2098,6 +2102,12 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
     window.api.ui.set({ agentActivityDisplayMode: normalized }).catch(console.error)
     set({ agentActivityDisplayMode: normalized })
   },
+  sidebarViewMode: 'workspaces',
+  setSidebarViewMode: (mode) => {
+    const normalized: SidebarViewMode = mode === 'agents' ? 'agents' : 'workspaces'
+    window.api.ui.set({ sidebarViewMode: normalized }).catch(console.error)
+    set({ sidebarViewMode: normalized })
+  },
 
   workspaceStatuses: cloneDefaultWorkspaceStatuses(),
   setWorkspaceStatuses: (statuses) => {
@@ -2374,6 +2384,9 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
         worktreeCardProperties: normalizeWorktreeCardProperties(ui.worktreeCardProperties),
         _worktreeCardModeDefaulted: ui._worktreeCardModeDefaulted === true,
         agentActivityDisplayMode: normalizeAgentActivityDisplayMode(ui.agentActivityDisplayMode),
+        sidebarViewMode: (ui.sidebarViewMode === 'agents'
+          ? 'agents'
+          : 'workspaces') satisfies SidebarViewMode as SidebarViewMode,
         workspaceStatuses: normalizeWorkspaceStatuses(ui.workspaceStatuses),
         workspaceBoardOpacity: clampWorkspaceBoardOpacity(ui.workspaceBoardOpacity),
         workspaceBoardColumnWidth: clampWorkspaceBoardColumnWidth(ui.workspaceBoardColumnWidth),

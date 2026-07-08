@@ -99,6 +99,10 @@ type CompactAgentRowProps = {
   reserveDisclosureGutter?: boolean
   isFocusedPane?: boolean
   hideIdentityIcon?: boolean
+  /** [FORK] Одна строка «как в Cursor»: только заголовок, без " - secondary". */
+  hideSecondaryText?: boolean
+  /** [FORK] Внешняя подгонка карточки (agents-view выравнивает её с папками). */
+  className?: string
   /** [FORK] Непрочитанность строки — для янтарного кружка завершённой работы. */
   isUnvisited?: boolean
   /** [FORK] Hover-действия строки: пин (закрепить сверху) и архив (закрыть). */
@@ -121,6 +125,8 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
   reserveDisclosureGutter = false,
   isFocusedPane = false,
   hideIdentityIcon = false,
+  hideSecondaryText = false,
+  className,
   isUnvisited = false,
   isPinned = false,
   onTogglePin,
@@ -232,7 +238,7 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
         <span className={isFocusedPane ? 'text-foreground' : 'text-muted-foreground/90'}>
           {primary}
         </span>
-        {secondary && (
+        {secondary && !hideSecondaryText && (
           <span className={isFocusedPane ? 'text-foreground/70' : 'text-muted-foreground/65'}>
             {' '}
             - {secondary}
@@ -337,7 +343,8 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
         'flex h-7 items-center gap-1',
         isFocusedPane && 'bg-worktree-sidebar-accent',
         sendTargetStatus === 'sending' && 'cursor-progress opacity-75',
-        sendTargetStatus === 'disabled' && 'cursor-default opacity-60'
+        sendTargetStatus === 'disabled' && 'cursor-default opacity-60',
+        className
       )}
       onClickCapture={handleSendTargetClickCapture}
       onClick={handleActivate}

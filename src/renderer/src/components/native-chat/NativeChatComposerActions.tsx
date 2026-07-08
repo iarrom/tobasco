@@ -57,7 +57,9 @@ export function NativeChatComposerActions({
                 aria-label={translate('components.native-chat.composer.attach', 'Attach file')}
                 disabled={attachDisabled}
                 onClick={onAttach}
-                className="rounded-full pointer-coarse:size-11"
+                // [FORK] size-7: все контролы композера одной высоты (28px),
+                // как «+»/пикер модели — см. NativeChatComposerAddMenu.
+                className="size-7 rounded-full pointer-coarse:size-11"
               >
                 <Plus className="size-4" />
               </Button>
@@ -102,7 +104,7 @@ export function NativeChatComposerActions({
                   onDictationHoldEnd()
                 }
               }}
-              className="rounded-full pointer-coarse:size-11"
+              className="size-7 rounded-full pointer-coarse:size-11"
             >
               {isDictating ? (
                 <Square className="size-3.5 fill-current" />
@@ -126,7 +128,7 @@ export function NativeChatComposerActions({
           onClick={isWorking ? onStop : onSend}
           variant={isWorking ? 'secondary' : 'default'}
           size="icon"
-          className="size-8 rounded-full pointer-coarse:size-10"
+          className="size-7 rounded-full pointer-coarse:size-10"
         >
           {isWorking ? (
             <Square className="size-3.5 fill-current" />

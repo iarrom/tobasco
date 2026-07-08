@@ -26,6 +26,7 @@ import { useAgentPanelState } from '@/components/agent-panel/agent-panel-state'
 import { isNativeChatSupportedAgent } from './native-chat-availability'
 import { useAgentChatColumnState } from './agent-chat-column-state'
 import NativeChatView from './NativeChatView'
+import AgentChatContextHeader from './AgentChatContextHeader'
 
 const EMPTY_TERMINAL_TABS: readonly never[] = []
 
@@ -198,6 +199,8 @@ export function AgentChatColumn(): React.JSX.Element {
           line up with the center column's tab chrome (TabGroupSplitLayout)
           and the sidebar's titlebar-left seam. */}
       <div className="h-[4px] shrink-0 bg-card" data-terminal-focus-release-surface="true" />
+      {/* [FORK] Cursor-стиль: «проект ▾ ветка ▾ где ▾» над полосой сессий. */}
+      {activeWorktreeId ? <AgentChatContextHeader worktreeId={activeWorktreeId} /> : null}
       <div className="flex h-8 shrink-0 items-center gap-1 border-b border-border bg-card pr-1.5">
         {activeWorktreeId && sessions.length > 0 ? (
           <AgentSessionTabStrip

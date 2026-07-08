@@ -3331,6 +3331,9 @@ export type WorkspaceHostScope = 'all' | 'local' | `ssh:${string}` | `runtime:${
 export type VisibleWorkspaceHostIds = Exclude<WorkspaceHostScope, 'all'>[] | null
 export type WorkspaceHostOrder = Exclude<WorkspaceHostScope, 'all'>[]
 
+/** [FORK] Which layout the left sidebar renders. */
+export type SidebarViewMode = 'workspaces' | 'agents'
+
 export type PersistedUIState = {
   lastActiveRepoId: string | null
   lastActiveWorktreeId: string | null
@@ -3383,6 +3386,9 @@ export type PersistedUIState = {
    *  user-facing worktree card modes. */
   _worktreeCardModeDefaulted?: boolean
   agentActivityDisplayMode?: AgentActivityDisplayMode
+  /** [FORK] Left sidebar layout: classic worktree list or the Cursor-style
+   *  agents view (projects → flat agent-session list). */
+  sidebarViewMode?: SidebarViewMode
   workspaceStatuses?: WorkspaceStatusDefinition[]
   workspaceBoardOpacity?: number
   workspaceBoardColumnWidth?: number
