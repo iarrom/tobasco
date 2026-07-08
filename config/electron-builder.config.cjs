@@ -267,7 +267,10 @@ module.exports = {
   // silently downgrading to ad-hoc artifacts that look shippable in CI logs.
   forceCodeSigning: isMacRelease,
   dmg: {
-    artifactName: 'orca-macos-${arch}.${ext}'
+    artifactName: 'orca-macos-${arch}.${ext}',
+    // [FORK] Подписываем сам DMG-контейнер (по умолчанию electron-builder
+    // этого не делает); нотаризацию dmg доклеивает release-mac.mjs.
+    sign: true
   },
   linux: {
     // Why: Ubuntu desktop ships GNOME Orca as the `orca` package and /usr/bin/orca.

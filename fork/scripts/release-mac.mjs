@@ -110,8 +110,31 @@ for (const [cmd, cmdArgs] of releaseSteps) {
   execFileSync(cmd, cmdArgs, { cwd: repoRoot, stdio: 'inherit', env: releaseEnv })
 }
 
+// 5. Нотаризуем и степлим сами DMG: тогда даже контейнер проходит
+// spctl -t open, а стейпл на приложении внутри уже сделал electron-builder.
 const dist = path.join(repoRoot, 'dist')
 const dmgs = readdirSync(dist).filter((f) => f.endsWith('.dmg'))
+for (const dmg of dmgs) {
+  const dmgPath = path.join(dist, dmg)
+  console.log(`▶ notarize ${dmg}`)
+  execFileSync(
+    'xcrun',
+    [
+      'notarytool',
+      'submit',
+      dmgPath,
+      '--wait',
+      '--apple-id',
+      process.env.APPLE_ID,
+      '--password',
+      process.env.APPLE_APP_SPECIFIC_PASSWORD,
+      '--team-id',
+      process.env.APPLE_TEAM_ID
+    ],
+    { stdio: 'inherit' }
+  )
+  execFileSync('xcrun', ['stapler', 'staple', dmgPath], { stdio: 'inherit' })
+}
 console.log('\n✅ Готово:')
 for (const dmg of dmgs) {
   console.log(`  ${path.join(dist, dmg)}`)
