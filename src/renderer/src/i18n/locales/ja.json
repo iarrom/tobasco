@@ -12657,6 +12657,10 @@
       "launchPromptNotDelivered": "Not delivered — check the terminal",
       "revival": {
         "failed": "The agent exited and its session could not be resumed — relaunch it in the terminal."
+      },
+      "editMessage": {
+        "hint": "Esc でキャンセル",
+        "send": "編集したメッセージを送信"
       }
     },
     "tab": {

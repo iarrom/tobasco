@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ArrowDown, ListChecks } from 'lucide-react'
+import { ArrowDown, ListChecks, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { CommentMarkdownLinkClickHandler } from '@/components/sidebar/CommentMarkdown'
 import { translate } from '@/i18n/i18n'
@@ -42,9 +42,12 @@ function geometryOf(el: HTMLElement): ScrollGeometry {
  *  affordance that opens the plan tab once the plan file is written. */
 function NativeChatPlanStatusLine({
   status,
+  title,
   onOpen
 }: {
   status: 'creating' | 'created'
+  /** [FORK] Заголовок плана для карточки «Created plan». */
+  title?: string | null
   onOpen?: () => void
 }): React.JSX.Element {
   const label =
@@ -57,14 +60,20 @@ function NativeChatPlanStatusLine({
       <span className={cn(status === 'creating' && 'native-chat-step-shimmer')}>{label}</span>
     </span>
   )
+  // [FORK] Готовый план — карточка как в Cursor: приглушённый лейбл, заголовок
+  // плана, шеврон справа; вся карточка открывает план.
   if (status === 'created' && onOpen) {
     return (
       <button
         type="button"
         onClick={onOpen}
-        className="flex w-fit items-center rounded-md py-0.5 text-left transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex w-full items-center justify-between gap-3 rounded-xl border border-input bg-card px-4 py-2.5 text-left shadow-xs transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/30"
       >
-        {content}
+        <span className="min-w-0">
+          <span className="block text-xs text-muted-foreground">{label}</span>
+          {title ? <span className="block truncate text-sm text-foreground">{title}</span> : null}
+        </span>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
       </button>
     )
   }
@@ -98,7 +107,9 @@ export function NativeChatMessageList({
   failedDeliveryMessageIds,
   // [FORK]
   planStatus = null,
-  onOpenPlan
+  planTitle = null,
+  onOpenPlan,
+  onEditSendUserMessage
 }: {
   session: NativeChatLiveSession
   isWorking: boolean
@@ -110,7 +121,11 @@ export function NativeChatMessageList({
   /** [FORK] Plan-mode transcript status: shimmering "Creating plan…" while the
    *  plan turn works, "Created plan" (clickable) once the plan file is written. */
   planStatus?: 'creating' | 'created' | null
+  /** [FORK] Заголовок готового плана — для Cursor-карточки в переписке. */
+  planTitle?: string | null
   onOpenPlan?: () => void
+  /** [FORK] Отправка отредактированного сообщения (click-to-edit пузыря). */
+  onEditSendUserMessage?: (text: string) => void
 }): React.JSX.Element {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [stuckToBottom, setStuckToBottom] = useState(true)
@@ -316,10 +331,13 @@ export function NativeChatMessageList({
                 onScrollMessageToTop={scrollMessageToTop}
                 onLinkClick={onLinkClick}
                 allowFileUriLinks={allowFileUriLinks}
+                onEditSend={onEditSendUserMessage}
               />
             )
           )}
-          {planStatus ? <NativeChatPlanStatusLine status={planStatus} onOpen={onOpenPlan} /> : null}
+          {planStatus ? (
+            <NativeChatPlanStatusLine status={planStatus} title={planTitle} onOpen={onOpenPlan} />
+          ) : null}
           {showTypingIndicator ? <TypingIndicatorRow /> : null}
         </div>
       </div>

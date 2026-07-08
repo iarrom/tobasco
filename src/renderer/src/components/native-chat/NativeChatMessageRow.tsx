@@ -18,6 +18,8 @@ import { pairToolBlocks } from './native-chat-tool-pairing'
 import { NativeChatCopyButton } from './NativeChatCopyButton'
 import { segmentNativeChatPromptTokens } from './native-chat-prompt-tokens'
 import { NativeChatPromptText } from './NativeChatPromptText'
+// [FORK] Инлайн-редактор пользовательского сообщения (Cursor-стиль).
+import { NativeChatUserMessageEditor } from './NativeChatUserMessageEditor'
 
 function proseToMarkdown(blocks: NativeChatBlock[]): string {
   return blocks
@@ -102,7 +104,8 @@ export function MessageRow({
   onScrollMessageToTop,
   onLinkClick,
   allowFileUriLinks = false,
-  deliveryFailed = false
+  deliveryFailed = false,
+  onEditSend
 }: {
   message: NativeChatMessage
   /** This row is the agent's currently-running step (shimmer its label). */
@@ -117,10 +120,14 @@ export function MessageRow({
   onLinkClick?: CommentMarkdownLinkClickHandler
   allowFileUriLinks?: boolean
   deliveryFailed?: boolean
+  /** [FORK] Отправка отредактированного текста агенту; включает click-to-edit. */
+  onEditSend?: (text: string) => void
 }): React.JSX.Element | null {
   const rowRef = useRef<HTMLDivElement | null>(null)
   // Collapse the pinned (sticky) user prompt to 2 lines; click toggles full text.
   const [userExpanded, setUserExpanded] = useState(false)
+  // [FORK] Клик по пузырю открывает инлайн-редактор (Cursor-стиль).
+  const [editing, setEditing] = useState(false)
   const { prose, tools } = useMemo(() => splitNativeChatBlocks(message.blocks), [message.blocks])
   const toolSteps = useMemo(() => pairToolBlocks(tools), [tools])
   // The active tool line is the last call still awaiting a result, else the last
@@ -183,6 +190,21 @@ export function MessageRow({
     // replaces it, there is no visible state change — the send just appears and
     // stays. (A distinct "queued" treatment flickered normal→queued→normal as the
     // transcript caught up.)
+    if (editing && onEditSend) {
+      return (
+        <div ref={rowRef} className="flex flex-col items-end gap-0.5">
+          <NativeChatUserMessageEditor
+            initialText={markdown}
+            onSend={(text) => {
+              setEditing(false)
+              onEditSend(text)
+            }}
+            onCancel={() => setEditing(false)}
+          />
+        </div>
+      )
+    }
+    const canEdit = onEditSend !== undefined && markdown.length > 0
     return (
       // [FORK] Only the latest user prompt is pinned to the top of the scroll
       // viewport while its turn scrolls under it, so the agent's current working
@@ -202,19 +224,32 @@ export function MessageRow({
             // border-input + bg-card (dark: bg-input/30) — пузырь и инпут читаются
             // как один материал.
             'max-w-[85%] rounded-xl rounded-tr-sm border border-input bg-card px-3 py-2 text-sm text-card-foreground shadow-xs dark:bg-input/30',
-            // Pinned prompt collapses to 2 lines; click/Enter toggles full text.
-            sticky && 'cursor-pointer'
+            // [FORK] Клик открывает инлайн-редактор; у прижатого промпта клик
+            // сперва раскрывает клип из 2 строк, второй клик — редактор.
+            (sticky || canEdit) && 'cursor-pointer'
           )}
-          {...(sticky
+          {...(sticky || canEdit
             ? {
                 role: 'button',
                 tabIndex: 0,
                 'aria-expanded': userExpanded,
-                onClick: () => setUserExpanded((v) => !v),
+                onClick: () => {
+                  if (sticky && !userExpanded) {
+                    setUserExpanded(true)
+                    return
+                  }
+                  if (canEdit) {
+                    setEditing(true)
+                  }
+                },
                 onKeyDown: (event: React.KeyboardEvent) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault()
-                    setUserExpanded((v) => !v)
+                    if (sticky && !userExpanded) {
+                      setUserExpanded(true)
+                    } else if (canEdit) {
+                      setEditing(true)
+                    }
                   }
                 }
               }

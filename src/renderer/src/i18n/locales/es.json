@@ -12657,6 +12657,10 @@
       "launchPromptNotDelivered": "No se entregó; revisa el terminal",
       "revival": {
         "failed": "The agent exited and its session could not be resumed — relaunch it in the terminal."
+      },
+      "editMessage": {
+        "hint": "Esc para cancelar",
+        "send": "Enviar mensaje editado"
       }
     },
     "tab": {

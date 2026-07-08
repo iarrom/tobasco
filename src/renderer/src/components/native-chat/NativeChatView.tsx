@@ -8,6 +8,9 @@ import { useNativeChatLiveSession } from './use-native-chat-live-session'
 import { selectNativeChatViewState } from './native-chat-view-state'
 import { NativeChatMessageList } from './NativeChatMessageList'
 import { NativeChatComposer, type NativeChatComposerHandle } from './NativeChatComposer'
+// [FORK] Доставка отредактированного сообщения тем же путём, что и композер.
+import { useNativeChatEditedMessageSend } from './use-native-chat-edited-message-send'
+import { buildNativeChatPaneCaptureHandlers } from './native-chat-pane-capture-handlers'
 import { NATIVE_FILE_DROP_TARGET } from '../../../../shared/native-file-drop'
 import { useNativeChatFileDrag } from './use-native-chat-file-drag'
 import { NativeChatFileDropOverlay } from './NativeChatFileDropOverlay'
@@ -40,11 +43,6 @@ import {
   deriveNativeChatStreamingText,
   nativeChatStreamingMessage
 } from '../../../../shared/native-chat-streaming'
-import {
-  shouldFocusNativeChatComposerFromEditingKey,
-  shouldFocusNativeChatPaneFromPointerTarget,
-  shouldRedirectNativeChatTyping
-} from './native-chat-typing-redirect'
 import { useNativeChatContextMenu } from './use-native-chat-context-menu'
 import type { NativeChatContextMenuActions } from './use-native-chat-context-menu'
 import { resolveNativeChatFileLinkContext } from './native-chat-file-link'
@@ -284,6 +282,12 @@ function NativeChatResolvedView({
     },
     [pendingScope]
   )
+  const sendEditedUserMessage = useNativeChatEditedMessageSend({
+    terminalTabId,
+    targetPtyId,
+    agent,
+    onOptimisticSend
+  })
   const onSlashCommand = useCallback(
     (command: string) => {
       setCommandMarkers(appendCommandMarkerCache(commandMarkerScope, command))
@@ -381,42 +385,18 @@ function NativeChatResolvedView({
         onDragEnter={fileDrag.dragHandlers.onDragEnter}
         onDragLeave={fileDrag.dragHandlers.onDragLeave}
         tabIndex={-1}
-        onPointerDownCapture={(event) => {
-          if (event.button === 2) {
-            contextMenu.onSelectionCapture()
-            event.preventDefault()
-            event.stopPropagation()
-            return
-          }
-          if (event.button === 0 && shouldFocusNativeChatPaneFromPointerTarget(event.target)) {
-            rootRef.current?.focus({ preventScroll: true })
-          }
-        }}
-        onKeyDownCapture={(event) => {
-          // Backspace/Delete outside an input focuses the composer (like typing)
-          // but inserts nothing — let the now-focused field handle the keystroke.
-          if (shouldFocusNativeChatComposerFromEditingKey(event)) {
-            composerRef.current?.focus()
-            return
-          }
-          if (!shouldRedirectNativeChatTyping(event)) {
-            return
-          }
-          if (!composerRef.current?.insertTypedText(event.key)) {
-            return
-          }
-          event.preventDefault()
-          event.stopPropagation()
-        }}
+        {...buildNativeChatPaneCaptureHandlers({
+          rootRef,
+          composerRef,
+          onSelectionCapture: contextMenu.onSelectionCapture
+        })}
         onMouseUpCapture={contextMenu.onSelectionCapture}
         onKeyUpCapture={contextMenu.onSelectionCapture}
         onContextMenuCapture={contextMenu.onContextMenuCapture}
         className="relative flex h-full min-h-0 w-full flex-col bg-background focus:outline-none"
       >
         {fileDrag.isFileDragOver ? <NativeChatFileDropOverlay /> : null}
-        {/* [FORK] Пустой чат: без заглушки «Start a chat…»; верхний блок
-          схлопывается, композер прижат к верху пейна (Cursor), нижний спейсер
-          добирает остаток высоты. */}
+        {/* [FORK] Пустой чат: композер прижат к верху (Cursor), спейсер ниже. */}
         <div className={cn('flex min-h-0 flex-col', viewState.kind !== 'empty' && 'flex-1')}>
           {viewState.kind === 'loading' ? (
             <NativeChatEmptyState kind="loading" />
@@ -431,7 +411,9 @@ function NativeChatResolvedView({
               allowFileUriLinks={fileLinkContext !== null}
               failedDeliveryMessageIds={failedLaunchPromptMessageIds}
               planStatus={plan.planStatus}
+              planTitle={plan.plan?.title ?? null}
               onOpenPlan={plan.openPlan}
+              onEditSendUserMessage={canSend ? sendEditedUserMessage : undefined}
             />
           )}
         </div>
@@ -472,7 +454,6 @@ function NativeChatResolvedView({
             queuePaused={interactivePromptActive}
           />
         </div>
-        {/* [FORK] Нижний спейсер пустого чата: добирает высоту под композером. */}
         {viewState.kind === 'empty' ? <div className="min-h-0 flex-1" /> : null}
         {contextMenu.menu}
       </div>
