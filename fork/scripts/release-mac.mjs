@@ -94,6 +94,8 @@ for (const key of ['APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID']) 
 // В Keychain-режиме зовём их напрямую (upstream-верификатор требует CSC_LINK,
 // который в этом режиме не нужен); с CSC_LINK — штатный build:mac:release.
 const releaseEnv = { ...process.env, ORCA_MAC_RELEASE: '1' }
+// --arm64 / --x64 ограничивают сборку одной архитектурой (по умолчанию обе).
+const archFlags = process.argv.slice(2).filter((a) => a === '--arm64' || a === '--x64')
 const releaseSteps = process.env.CSC_LINK
   ? [['pnpm', ['run', 'build:mac:release']]]
   : [
@@ -102,7 +104,14 @@ const releaseSteps = process.env.CSC_LINK
       ['pnpm', ['run', 'ensure:electron-runtime']],
       [
         'pnpm',
-        ['exec', 'electron-builder', '--config', 'config/electron-builder.config.cjs', '--mac']
+        [
+          'exec',
+          'electron-builder',
+          '--config',
+          'config/electron-builder.config.cjs',
+          '--mac',
+          ...archFlags
+        ]
       ]
     ]
 for (const [cmd, cmdArgs] of releaseSteps) {
