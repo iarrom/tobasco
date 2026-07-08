@@ -26,20 +26,27 @@ export function useCursorSessionDiscovery(args: {
     }
     const state = useAppStore.getState()
     let cwd: string | null = null
+    let tabCreatedAt: number | null = null
     for (const [worktreeId, tabs] of Object.entries(state.tabsByWorktree)) {
-      if ((tabs ?? []).some((tab) => tab.id === terminalTabId)) {
+      const tab = (tabs ?? []).find((t) => t.id === terminalTabId)
+      if (tab) {
         cwd = findWorktreeById(state.worktreesByRepo, worktreeId)?.path ?? null
+        tabCreatedAt = tab.createdAt ?? null
         break
       }
     }
     if (!cwd) {
       return
     }
+    // Только транскрипты, появившиеся после создания таба (с буфером на
+    // рассинхрон часов/фс): иначе свежий чат наследует старую сессию из
+    // Cursor IDE — самый свежий файл проекта не обязан быть НАШИМ.
+    const minMtimeMs = tabCreatedAt !== null ? tabCreatedAt - 5000 : undefined
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null
     const probe = (): void => {
       window.api.nativeChat
-        .discoverCursorSession(cwd as string)
+        .discoverCursorSession(cwd as string, minMtimeMs)
         .then((found) => {
           if (cancelled) {
             return
