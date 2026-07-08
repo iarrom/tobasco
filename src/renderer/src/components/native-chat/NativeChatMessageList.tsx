@@ -261,6 +261,25 @@ export function NativeChatMessageList({
     }
   }, [messages.length, isWorking, showTypingIndicator, scrollToBottom])
 
+  // [FORK] Snap-точка отправки (Cursor): новое сообщение пользователя встаёт
+  // к верхней кромке вьюпорта и остаётся там sticky-пином, а ответ агента
+  // растёт под ним. Позже штатного stick-to-bottom эффекта — переопределяет его.
+  const lastUserSnapRef = useRef<string | null>(lastUserMessageId)
+  useLayoutEffect(() => {
+    if (lastUserSnapRef.current === lastUserMessageId) {
+      return
+    }
+    lastUserSnapRef.current = lastUserMessageId
+    const container = scrollRef.current
+    if (!container || !lastUserMessageId) {
+      return
+    }
+    const row = container.querySelector(`[data-user-message-id="${CSS.escape(lastUserMessageId)}"]`)
+    if (row instanceof HTMLElement) {
+      container.scrollTop += row.getBoundingClientRect().top - container.getBoundingClientRect().top
+    }
+  }, [lastUserMessageId])
+
   // Keep the affordances in sync if the container resizes (e.g. composer mounts,
   // viewport reflow) without a scroll event.
   useEffect(() => {

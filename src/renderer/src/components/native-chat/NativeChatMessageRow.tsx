@@ -192,7 +192,11 @@ export function MessageRow({
     // transcript caught up.)
     if (editing && onEditSend) {
       return (
-        <div ref={rowRef} className="flex flex-col items-end gap-0.5">
+        <div
+          ref={rowRef}
+          data-user-message-id={message.id}
+          className="flex flex-col items-end gap-0.5"
+        >
           <NativeChatUserMessageEditor
             initialText={markdown}
             onSend={(text) => {
@@ -213,6 +217,8 @@ export function MessageRow({
       // pin at top:0 and overlap instead of replacing one another.
       <div
         ref={rowRef}
+        // [FORK] Адрес строки для снапа отправленного сообщения к верху вьюпорта.
+        data-user-message-id={message.id}
         className={cn(
           'flex flex-col items-end gap-0.5',
           sticky && 'sticky top-0 z-10 bg-background pb-1'
