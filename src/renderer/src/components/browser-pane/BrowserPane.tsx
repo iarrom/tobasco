@@ -44,8 +44,7 @@ import {
   X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { QuickLaunchAgentMenuItems } from '@/components/tab-bar/QuickLaunchButton'
-import { focusTerminalTabSurface } from '@/lib/focus-terminal-tab-surface'
+import { BrowserAnnotationSendMenuContent } from './BrowserAnnotationSendMenuContent'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -5360,7 +5359,7 @@ function BrowserPagePane({
                     <TooltipContent side="bottom" sideOffset={6}>
                       {translate(
                         'auto.components.browser.pane.BrowserPane.95af781091',
-                        'Send feedback to a new agent'
+                        'Send feedback to an agent'
                       )}
                     </TooltipContent>
                   </Tooltip>
@@ -5370,13 +5369,10 @@ function BrowserPagePane({
                     onInteractOutside={preventAgentSendTargetOutsideDismiss}
                     onPointerDownOutside={preventAgentSendTargetOutsideDismiss}
                   >
-                    <QuickLaunchAgentMenuItems
+                    <BrowserAnnotationSendMenuContent
                       worktreeId={worktreeId}
                       groupId={activeGroupId ?? worktreeId}
-                      onFocusTerminal={focusTerminalTabSurface}
                       prompt={browserAnnotationsPrompt}
-                      promptDelivery="submit-after-ready"
-                      launchSource="notes_send"
                       onPromptDelivered={handleBrowserAnnotationsSentToAgent}
                     />
                   </DropdownMenuContent>
@@ -5636,7 +5632,7 @@ function BrowserPagePane({
                         <TooltipContent side="bottom" sideOffset={6}>
                           {translate(
                             'auto.components.browser.pane.BrowserPane.95af781091',
-                            'Send feedback to a new agent'
+                            'Send feedback to an agent'
                           )}
                         </TooltipContent>
                       </Tooltip>
@@ -5646,13 +5642,10 @@ function BrowserPagePane({
                         onInteractOutside={preventAgentSendTargetOutsideDismiss}
                         onPointerDownOutside={preventAgentSendTargetOutsideDismiss}
                       >
-                        <QuickLaunchAgentMenuItems
+                        <BrowserAnnotationSendMenuContent
                           worktreeId={worktreeId}
                           groupId={activeGroupId ?? worktreeId}
-                          onFocusTerminal={focusTerminalTabSurface}
                           prompt={browserAnnotationsPrompt}
-                          promptDelivery="submit-after-ready"
-                          launchSource="notes_send"
                           onPromptDelivered={handleBrowserAnnotationsSentToAgent}
                         />
                       </DropdownMenuContent>
