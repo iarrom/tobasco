@@ -17,6 +17,7 @@ import {
   type NativeChatResolvedTarget
 } from './native-chat-composer-target'
 import type { NativeChatComposerImageAttachment } from './NativeChatComposerField'
+import type { PastedElementDump } from './native-chat-prompt-tokens'
 
 /** [FORK] The actual chat-turn delivery (non-slash): frame text (+ images),
  *  write to the pty, echo optimistically, record telemetry. Shared by the
@@ -72,6 +73,9 @@ export function useNativeChatComposerSend(params: {
   agent: string
   draft: string
   imageAttachments: readonly NativeChatComposerImageAttachment[]
+  /** [FORK] Чипы пастнутых дампов элементов — дописываются к исходящему ходу. */
+  elementAttachments?: readonly PastedElementDump[]
+  clearElementAttachments?: () => void
   disabled: boolean
   resolveTarget: () => NativeChatResolvedTarget | null
   wrapOutgoing: (text: string, isSlashCommand: boolean) => string
@@ -90,6 +94,8 @@ export function useNativeChatComposerSend(params: {
     agent,
     draft,
     imageAttachments,
+    elementAttachments,
+    clearElementAttachments,
     disabled,
     resolveTarget,
     wrapOutgoing,
@@ -111,7 +117,13 @@ export function useNativeChatComposerSend(params: {
   })
 
   return useCallback(() => {
-    const text = draft
+    // [FORK] Дампы элементов едут в конце хода; слэш-детекция и история — по
+    // чистому драфту, чтобы чип не превращал команду в чат-ход.
+    const dumps = elementAttachments ?? []
+    const text =
+      dumps.length > 0
+        ? [draft.trim(), ...dumps.map((d) => d.text)].filter(Boolean).join('\n\n')
+        : draft
     const imagePaths = imageAttachments.map((attachment) => attachment.path)
     if ((text.trim() === '' && imagePaths.length === 0) || disabled) {
       return
@@ -123,7 +135,7 @@ export function useNativeChatComposerSend(params: {
     // Slash commands are TUI controls, not chat turns — never attach images to
     // one, never queue one. Otherwise images are deferred to submit (like text)
     // so the GUI chips and TUI input stay in sync: images, text, Enter atomically.
-    const isSlashCommand = isSlashCommandDraft(text)
+    const isSlashCommand = dumps.length === 0 && isSlashCommandDraft(draft)
     if (isSlashCommand) {
       // Guarded like chat turns: a slash command typed at a dead agent would
       // otherwise run in the bare shell (e.g. `/clear` → command not found).
@@ -144,14 +156,17 @@ export function useNativeChatComposerSend(params: {
     } else {
       deliver(text, imagePaths)
     }
-    setHistory((prev) => pushHistory(prev, text))
+    setHistory((prev) => pushHistory(prev, draft))
     setDraft('')
     setCaret(0)
     clearImageAttachments()
+    clearElementAttachments?.()
     setNotice(null)
   }, [
     agent,
     clearImageAttachments,
+    clearElementAttachments,
+    elementAttachments,
     deliver,
     draft,
     imageAttachments,

@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '../../store'
@@ -413,12 +414,15 @@ function NativeChatResolvedView({
         className="relative flex h-full min-h-0 w-full flex-col bg-background focus:outline-none"
       >
         {fileDrag.isFileDragOver ? <NativeChatFileDropOverlay /> : null}
-        <div className="flex min-h-0 flex-1 flex-col">
+        {/* [FORK] Пустой чат: без заглушки «Start a chat…»; верхний блок
+          схлопывается, композер прижат к верху пейна (Cursor), нижний спейсер
+          добирает остаток высоты. */}
+        <div className={cn('flex min-h-0 flex-col', viewState.kind !== 'empty' && 'flex-1')}>
           {viewState.kind === 'loading' ? (
             <NativeChatEmptyState kind="loading" />
           ) : viewState.kind === 'error' ? (
             <NativeChatEmptyState kind="error" message={viewState.message} />
-          ) : viewState.kind === 'empty' ? null : ( // центрируется по вертикали нижним flex-1 спейсером — как в Cursor. // [FORK] Пустой чат: убрали заглушку «Start a chat…», композер
+          ) : viewState.kind === 'empty' ? null : (
             <NativeChatMessageList
               session={sessionWithPending}
               isWorking={isWorking}
@@ -468,9 +472,8 @@ function NativeChatResolvedView({
             queuePaused={interactivePromptActive}
           />
         </div>
-        {/* [FORK] Нижний спейсер: в пустом чате балансирует верхний flex-1,
-          выставляя композер по центру пейна (как в Cursor). */}
-        {viewState.kind === 'empty' ? <div className="flex-1" /> : null}
+        {/* [FORK] Нижний спейсер пустого чата: добирает высоту под композером. */}
+        {viewState.kind === 'empty' ? <div className="min-h-0 flex-1" /> : null}
         {contextMenu.menu}
       </div>
     </NativeChatSubagentContext.Provider>

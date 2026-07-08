@@ -25,6 +25,22 @@ const ELEMENT_MAX_BLOCK_LINES = 120
 
 type ElementBlock = { start: number; end: number; label: string }
 
+/** [FORK] Пастнутый дамп элемента, извлечённый из текста композера. */
+export type PastedElementDump = { text: string; label: string }
+
+// Метка чипа: имя файла компонента из первой стек-строки `in X (at /path/File.tsx)`
+// (как показывает Cursor), а не безликий `<div>`; тег — только как фолбэк.
+function elementDumpLabel(stackLine: string, tag: string): string {
+  const at = stackLine.match(/\(at ([^)\n]+)\)/)?.[1]
+  if (at) {
+    const file = at.split('/').pop()?.split(':')[0]
+    if (file) {
+      return file
+    }
+  }
+  return `<${tag}>`
+}
+
 function extractElementBlocks(text: string): ElementBlock[] {
   const blocks: ElementBlock[] = []
   const lines = text.split('\n')
@@ -58,7 +74,7 @@ function extractElementBlocks(text: string): ElementBlock[] {
     blocks.push({
       start: offsets[i]!,
       end: offsets[lastStack]! + lines[lastStack]!.length,
-      label: `<${open[1]!}>`
+      label: elementDumpLabel(lines[firstStack]!, open[1]!)
     })
     i = lastStack
   }
@@ -132,4 +148,32 @@ export function segmentNativeChatPromptTokens(text: string): PromptTokenSegment[
   pushText(text.slice(cursor), cursor === 0)
 
   return found ? segments : null
+}
+
+/** [FORK] Разбирает вставляемый в композер текст: дампы элементов уходят в
+ *  чипы-вложения, остаток — обычным текстом в драфт. Null — дампов нет,
+ *  вставка идёт нативным путём. */
+export function extractPastedElementDumps(
+  text: string
+): { dumps: PastedElementDump[]; remainder: string } | null {
+  const blocks = extractElementBlocks(text)
+  if (blocks.length === 0) {
+    return null
+  }
+  const dumps: PastedElementDump[] = []
+  const rest: string[] = []
+  let cursor = 0
+  for (const block of blocks) {
+    rest.push(text.slice(cursor, block.start))
+    dumps.push({ text: text.slice(block.start, block.end), label: block.label })
+    cursor = block.end
+  }
+  rest.push(text.slice(cursor))
+  return {
+    dumps,
+    remainder: rest
+      .join('')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  }
 }

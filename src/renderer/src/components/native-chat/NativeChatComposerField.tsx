@@ -1,6 +1,6 @@
 import type { ClipboardEventHandler, KeyboardEventHandler, RefObject } from 'react'
 import { useEffect } from 'react'
-import { ImageOff } from 'lucide-react'
+import { ImageOff, X } from 'lucide-react'
 // [FORK] Внешняя вставка в драфт (⌘L из аннотаций браузера и т.п.).
 import {
   appendToComposerDraft,
@@ -16,6 +16,8 @@ import { NativeChatComposerActions } from './NativeChatComposerActions'
 import { NativeChatAttachmentThumbnails } from './NativeChatAttachmentThumbnails'
 import { nativeChatComposerPlaceholder } from './native-chat-composer-target'
 import type { DiscoveredSkill } from '../../../../shared/skills'
+// [FORK] Чипы пастнутых дампов элементов в композере.
+import type { PastedElementDump } from './native-chat-prompt-tokens'
 
 export type NativeChatComposerFieldProps = {
   textareaRef: RefObject<HTMLTextAreaElement | null>
@@ -27,6 +29,10 @@ export type NativeChatComposerFieldProps = {
   activeSuggestion: number
   notice: string | null
   imageAttachments: readonly NativeChatComposerImageAttachment[]
+  /** [FORK] Дампы элементов, распознанные при вставке, — синие чипы с именем
+   *  файла компонента; уходят вместе с ходом. */
+  elementAttachments?: readonly PastedElementDump[]
+  onRemoveElementAttachment?: (index: number) => void
   sendButtonDisabled: boolean
   isWorking: boolean
   attachDisabled: boolean
@@ -74,6 +80,8 @@ export function NativeChatComposerField({
   activeSuggestion,
   notice,
   imageAttachments,
+  elementAttachments,
+  onRemoveElementAttachment,
   sendButtonDisabled,
   isWorking,
   attachDisabled,
@@ -156,6 +164,31 @@ export function NativeChatComposerField({
               attachments={imageAttachments}
               onRemove={onRemoveImageAttachment}
             />
+            {/* [FORK] Чипы дампов элементов: как в отправленном сообщении —
+              link-blue, имя файла компонента, × убирает чип. */}
+            {elementAttachments && elementAttachments.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-1 px-2 pt-1">
+                {elementAttachments.map((dump, index) => (
+                  <span
+                    key={`${dump.label}-${index}`}
+                    title={dump.text.slice(0, 400)}
+                    className="inline-flex max-w-48 items-center gap-1 rounded-md bg-blue-500/10 px-1.5 py-0.5 text-xs text-blue-500 dark:text-blue-400"
+                  >
+                    <span className="truncate">{dump.label}</span>
+                    {onRemoveElementAttachment ? (
+                      <button
+                        type="button"
+                        aria-label="Убрать элемент"
+                        className="shrink-0 rounded-sm opacity-60 hover:opacity-100"
+                        onClick={() => onRemoveElementAttachment(index)}
+                      >
+                        <X className="size-3" />
+                      </button>
+                    ) : null}
+                  </span>
+                ))}
+              </div>
+            ) : null}
             <textarea
               ref={textareaRef}
               value={draft}

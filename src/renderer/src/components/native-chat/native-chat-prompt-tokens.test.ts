@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { segmentNativeChatPromptTokens } from './native-chat-prompt-tokens'
+import {
+  extractPastedElementDumps,
+  segmentNativeChatPromptTokens
+} from './native-chat-prompt-tokens'
 
 const ELEMENT_DUMP = [
   '<button type="button" aria-label="Copy message" class="flex size-6 shr...">',
@@ -28,7 +31,7 @@ describe('segmentNativeChatPromptTokens', () => {
     const out = segmentNativeChatPromptTokens(`почини кнопку\n\n${ELEMENT_DUMP}\n\nона сломана`)
     expect(out).not.toBeNull()
     const element = out!.find((segment) => segment.kind === 'element')
-    expect(element).toMatchObject({ kind: 'element', label: '<button>' })
+    expect(element).toMatchObject({ kind: 'element', label: 'NativeChatCopyButton.tsx' })
     expect((element as { value: string }).value).toContain('in AgentControls')
     const text = out!
       .filter((segment) => segment.kind === 'text')
@@ -43,7 +46,9 @@ describe('segmentNativeChatPromptTokens', () => {
     const out = segmentNativeChatPromptTokens(
       '<span class="size-2 rounded-..." />\n  in CompactAgentRow2 (at /src/components/sidebar/worktree-card-compact-agent-row.tsx)'
     )
-    expect(out).toEqual([expect.objectContaining({ kind: 'element', label: '<span>' })])
+    expect(out).toEqual([
+      expect.objectContaining({ kind: 'element', label: 'worktree-card-compact-agent-row.tsx' })
+    ])
   })
 
   it('collapses multiple dumps to multiple chips', () => {
@@ -56,5 +61,19 @@ describe('segmentNativeChatPromptTokens', () => {
     expect(
       segmentNativeChatPromptTokens('<div class="a">\n  hello\n</div>\nno stack here')
     ).toBeNull()
+  })
+})
+
+describe('extractPastedElementDumps', () => {
+  it('splits pasted text into dump chips and a plain remainder', () => {
+    const text = `посмотри сюда\n${ELEMENT_DUMP}\nи почини`
+    const out = extractPastedElementDumps(text)
+    expect(out?.dumps).toHaveLength(1)
+    expect(out?.dumps[0]).toMatchObject({ label: 'NativeChatCopyButton.tsx' })
+    expect(out?.remainder).toBe('посмотри сюда\n\nи почини')
+  })
+
+  it('returns null for text without element dumps', () => {
+    expect(extractPastedElementDumps('обычный текст с <div> в прозе')).toBeNull()
   })
 })

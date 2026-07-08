@@ -3,6 +3,8 @@ import { translate } from '@/i18n/i18n'
 import type { AgentType } from '../../../../shared/agent-status-types'
 import { resolveImagePaste } from './native-chat-image-paste'
 import { NATIVE_CHAT_CONTEXT_PASTE_MAX_BYTES } from './native-chat-composer-target'
+// [FORK] Автосчитывание пастнутых дампов элементов — в чипы, не в текст.
+import { extractPastedElementDumps, type PastedElementDump } from './native-chat-prompt-tokens'
 
 /** Host the pasted image must be written to. For an SSH pane `connectionId` names
  *  the remote target so the temp file lands on the agent's host (via SFTP); both
@@ -25,6 +27,8 @@ export type UseNativeChatComposerPasteArgs = {
   /** Resolve the write target for a clipboard image — remote for SSH panes. */
   resolveImagePasteTarget: () => NativeChatImagePasteTarget
   insertTypedText: (text: string) => boolean
+  /** [FORK] Приём чипов дампов элементов, распознанных при вставке. */
+  attachElementDumps?: (dumps: PastedElementDump[]) => void
   setCaret: (caret: number) => void
   setNotice: (notice: string | null) => void
 }
@@ -60,6 +64,7 @@ export function useNativeChatComposerPaste({
   attachHostResolvedImagePaths,
   resolveImagePasteTarget,
   insertTypedText,
+  attachElementDumps,
   setCaret,
   setNotice
 }: UseNativeChatComposerPasteArgs): {
@@ -117,6 +122,16 @@ export function useNativeChatComposerPaste({
       // event target. (When the OS retargets the paste off the textarea the
       // pane listener still routes text via pasteFromClipboard.)
       if (!clipboardEventHasImage(event)) {
+        // [FORK] Кроме дампов элементов: они уходят в чипы, остаток — текстом.
+        const pastedText = event.clipboardData?.getData('text/plain') ?? ''
+        const extracted = attachElementDumps ? extractPastedElementDumps(pastedText) : null
+        if (extracted) {
+          event.preventDefault()
+          attachElementDumps!(extracted.dumps)
+          if (extracted.remainder) {
+            insertTypedText(extracted.remainder)
+          }
+        }
         return
       }
       event.preventDefault()
@@ -132,7 +147,14 @@ export function useNativeChatComposerPaste({
         setCaret(caretAtPaste)
       })()
     },
-    [attachClipboardImageTempFile, caret, saveClipboardImageAsTempFile, setCaret]
+    [
+      attachClipboardImageTempFile,
+      attachElementDumps,
+      caret,
+      insertTypedText,
+      saveClipboardImageAsTempFile,
+      setCaret
+    ]
   )
 
   const pasteFromClipboard = useCallback(() => {

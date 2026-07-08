@@ -31,6 +31,8 @@ import {
 import { useNativeChatSkills } from './use-native-chat-skills'
 import { useNativeChatComposerAttachments } from './use-native-chat-composer-attachments'
 import { useNativeChatComposerPaste } from './use-native-chat-composer-paste'
+// [FORK] Чипы пастнутых дампов элементов.
+import type { PastedElementDump } from './native-chat-prompt-tokens'
 import { useNativeChatComposerDictation } from './use-native-chat-composer-dictation'
 import { useNativeChatComposerKeyDown } from './use-native-chat-composer-keydown'
 import { NativeChatModelPickerContainer } from './NativeChatModelPickerContainer'
@@ -129,6 +131,15 @@ export const NativeChatComposer = forwardRef<NativeChatComposerHandle, NativeCha
     // images survive the composer unmounting on a TUI/GUI toggle.
     const draftScopeKey = targetPtyId ?? terminalTabId
     const { draft, setDraft } = useNativeChatDraft(draftScopeKey)
+    // [FORK] Дампы элементов, распознанные при вставке, — чипы над полем ввода.
+    const [elementAttachments, setElementAttachments] = useState<PastedElementDump[]>([])
+    const attachElementDumps = useCallback((dumps: PastedElementDump[]) => {
+      setElementAttachments((prev) => [...prev, ...dumps])
+    }, [])
+    const removeElementAttachment = useCallback((index: number) => {
+      setElementAttachments((prev) => prev.filter((_, i) => i !== index))
+    }, [])
+    const clearElementAttachments = useCallback(() => setElementAttachments([]), [])
     // [FORK] Model selection is owned by the view so the picker and the plan
     // surfaces share one source; plan mode arrives separately (per-tab state).
     const { selection, update: updateModelSelection } = modelSelection
@@ -208,7 +219,8 @@ export const NativeChatComposer = forwardRef<NativeChatComposerHandle, NativeCha
     })
     const sendButtonDisabled = isWorking
       ? !hasPty || !onStop
-      : disabled || (draft.trim() === '' && imageAttachments.length === 0)
+      : disabled ||
+        (draft.trim() === '' && imageAttachments.length === 0 && elementAttachments.length === 0)
 
     const insertTypedText = useCallback(
       (text: string): boolean => {
@@ -254,6 +266,7 @@ export const NativeChatComposer = forwardRef<NativeChatComposerHandle, NativeCha
       attachHostResolvedImagePaths,
       resolveImagePasteTarget,
       insertTypedText,
+      attachElementDumps,
       setCaret,
       setNotice
     })
@@ -303,6 +316,8 @@ export const NativeChatComposer = forwardRef<NativeChatComposerHandle, NativeCha
       agent,
       draft,
       imageAttachments,
+      elementAttachments,
+      clearElementAttachments,
       disabled,
       resolveTarget,
       wrapOutgoing,
@@ -412,6 +427,8 @@ export const NativeChatComposer = forwardRef<NativeChatComposerHandle, NativeCha
           activeSuggestion={activeSuggestion}
           notice={notice}
           imageAttachments={imageAttachments}
+          elementAttachments={elementAttachments}
+          onRemoveElementAttachment={removeElementAttachment}
           sendButtonDisabled={sendButtonDisabled}
           isWorking={isWorking}
           attachDisabled={disabled}
