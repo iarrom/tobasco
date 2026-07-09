@@ -618,8 +618,13 @@ export default function MarkdownPreview({
     ],
     [unsentMarkdownReviewNotes, unsentMarkdownReviewPrompt]
   )
+  // [FORK] Прячем панель review-заметок, пока их нет: с нулём заметок все её
+  // кнопки всё равно disabled, а «Review notes 0» — лишний шум.
   const canShowReviewTools = Boolean(
-    markdownAnnotationsEnabled && sourceWorktree && sourceRelativePath !== null
+    markdownAnnotationsEnabled &&
+    sourceWorktree &&
+    sourceRelativePath !== null &&
+    markdownReviewNotes.length > 0
   )
 
   // Why: each split pane needs its own markdown preview viewport even when the
