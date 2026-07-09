@@ -50,14 +50,16 @@ export function NativeChatWorkGroup({
   const liveProse = useMemo(() => (live ? deriveLiveProseMessages(steps) : []), [live, steps])
 
   if (live) {
+    // [FORK] gap-4: разделяем стримящиеся этапы (проза между вызовами и текущее
+    // действие-тикер) заметным вертикальным ритмом, а не липким mb-1.
     return (
-      <div className="opacity-80">
+      <div className="flex flex-col gap-4 opacity-80">
         {liveProse.map((prose) => (
           <CommentMarkdown
             key={prose.id}
             content={prose.markdown}
             variant="document"
-            className="mb-1 text-sm leading-relaxed text-foreground"
+            className="text-sm leading-relaxed text-foreground"
             onLinkClick={onLinkClick}
             allowFileUriLinks={allowFileUriLinks}
           />
