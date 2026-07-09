@@ -16,6 +16,7 @@ import {
 import { useNativeChatPlanMode, type NativeChatPlanModeState } from './use-native-chat-plan-mode'
 import {
   deriveLatestNativeChatPlan,
+  nativeChatPlanImplemented,
   type NativeChatDetectedPlan
 } from './native-chat-plan-detection'
 import { buildNativeChatPlanExecuteMessage } from './native-chat-plan-build'
@@ -59,8 +60,20 @@ export function useNativeChatPlan(params: {
     () => deriveLatestNativeChatPlan(messages, fileLinkContext?.worktreePath),
     [messages, fileLinkContext?.worktreePath]
   )
+  // [FORK] Как только агент начал реализовывать план (правки не-план файлов после
+  // записи Plans/*.md), карточка Review Plan больше не нужна — план уже в работе.
+  const planImplemented = useMemo(
+    () => nativeChatPlanImplemented(messages, fileLinkContext?.worktreePath),
+    [messages, fileLinkContext?.worktreePath]
+  )
+  // [FORK] «Created plan» в переписке тоже скрываем после реализации — план уже
+  // в работе, ссылка-возврат на него становится лишней (как и карточка Review).
   const planStatus: 'creating' | 'created' | null =
-    isWorking && planMode ? 'creating' : plan && plan.path !== builtPlanPath ? 'created' : null
+    isWorking && planMode
+      ? 'creating'
+      : plan && plan.path !== builtPlanPath && !planImplemented
+        ? 'created'
+        : null
 
   const openPlan = useCallback(() => {
     if (!plan || !fileLinkContext) {
@@ -157,7 +170,7 @@ export function useNativeChatPlan(params: {
     modelSelection,
     planModeState,
     planStatus,
-    showPlanCard: plan !== null && plan.path !== dismissedPlanPath,
+    showPlanCard: plan !== null && plan.path !== dismissedPlanPath && !planImplemented,
     plan,
     openPlan,
     buildPlan,

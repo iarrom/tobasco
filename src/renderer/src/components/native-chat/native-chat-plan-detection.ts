@@ -15,6 +15,10 @@ import {
 /** Tool names that write file content, across Claude Code and Codex-style agents. */
 const WRITE_TOOL_NAMES = new Set(['Write', 'create_file', 'str_replace_editor'])
 
+/** Tool names that mutate an existing file (edits), across supported agents.
+ *  Together with WRITE_TOOL_NAMES these are the "the agent changed a file" tools. */
+const EDIT_TOOL_NAMES = new Set(['Edit', 'MultiEdit', 'NotebookEdit', 'str_replace', 'apply_patch'])
+
 export type NativeChatDetectedPlan = {
   /** Absolute (or best-effort) path to the plan file, for reading + the tab. */
   path: string
@@ -76,4 +80,40 @@ export function deriveLatestNativeChatPlan(
     }
   }
   return latest
+}
+
+/** True once the agent has started implementing the plan: after the most recent
+ *  `Plans/*.md` write, a file-mutating tool call (write or edit) targets a
+ *  NON-plan file. In Plan mode the agent only writes the plan, so any later
+ *  real-file change means the plan is being executed — the docked Review Plan
+ *  card is no longer actionable and should hide. A fresh plan write (re-plan)
+ *  resets the signal so its own card shows until it too is implemented. Pure so
+ *  it stays unit-testable off the assembled transcript. */
+export function nativeChatPlanImplemented(
+  messages: readonly NativeChatMessage[],
+  worktreePath?: string
+): boolean {
+  let sawPlanWrite = false
+  let implementedAfterPlan = false
+  for (const message of messages) {
+    for (const block of message.blocks) {
+      if (!isToolCallBlock(block)) {
+        continue
+      }
+      if (!WRITE_TOOL_NAMES.has(block.name) && !EDIT_TOOL_NAMES.has(block.name)) {
+        continue
+      }
+      const filePath = readStringField(block.input, ['file_path', 'path', 'filePath'])
+      if (!filePath) {
+        continue
+      }
+      if (isNativeChatPlanFilePath(filePath, worktreePath)) {
+        sawPlanWrite = true
+        implementedAfterPlan = false
+      } else if (sawPlanWrite) {
+        implementedAfterPlan = true
+      }
+    }
+  }
+  return implementedAfterPlan
 }
