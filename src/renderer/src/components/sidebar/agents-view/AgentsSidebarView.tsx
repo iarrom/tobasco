@@ -177,7 +177,10 @@ function ProjectSection({
                   )}
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
-                  className="flex size-5 shrink-0 items-center justify-center rounded-md text-worktree-sidebar-foreground/60 opacity-0 transition-opacity hover:bg-worktree-sidebar-foreground/12 hover:text-worktree-sidebar-foreground group-hover/project-row:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-worktree-sidebar-ring data-[state=open]:opacity-100"
+                  // [FORK] pointer-coarse: hover-reveal is inaccessible on touch
+                  // (remote web on a tablet never fires group-hover) — keep the
+                  // affordance always visible there.
+                  className="flex size-5 shrink-0 items-center justify-center rounded-md text-worktree-sidebar-foreground/60 opacity-0 transition-opacity hover:bg-worktree-sidebar-foreground/12 hover:text-worktree-sidebar-foreground group-hover/project-row:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-worktree-sidebar-ring data-[state=open]:opacity-100 pointer-coarse:opacity-100"
                 >
                   <Plus className="size-3.5" strokeWidth={2.25} />
                 </button>
