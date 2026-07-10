@@ -244,7 +244,22 @@ function sendStatus(status: UpdateStatus): void {
     return
   }
   currentStatus = decoratedStatus
-  mainWindowRef?.webContents.send('updater:status', decoratedStatus)
+  updaterStatusWebContents()?.send('updater:status', decoratedStatus)
+}
+
+// [FORK] mainWindowRef survives its window: on macOS the app keeps running
+// after the last window closes, and a menu "Check for Updates" (or the 30-min
+// background poll) then sent into a destroyed webContents — an uncaught
+// "Object has been destroyed" main-process exception. Resolve a live target
+// per send, falling back to any open window (covers window recreation too).
+function updaterStatusWebContents(): Electron.WebContents | null {
+  // Optional-calls: unit tests stub the window with a bare { webContents }.
+  const target =
+    mainWindowRef && !mainWindowRef.isDestroyed?.()
+      ? mainWindowRef
+      : (BrowserWindow.getAllWindows?.().find((win) => !win.isDestroyed?.()) ?? null)
+  const contents = target?.webContents ?? null
+  return contents && !contents.isDestroyed?.() ? contents : null
 }
 
 function getOptionsForUpdateCheckVariant(variant: UpdateCheckVariant): UpdateCheckOptions {
@@ -1199,7 +1214,7 @@ async function checkForUpdateNudge(): Promise<void> {
     ) {
       awaitingNudgeCheckOutcome = true
       _setPendingUpdateNudgeId?.(nudge.id)
-      mainWindowRef?.webContents.send('updater:clearDismissal')
+      updaterStatusWebContents()?.send('updater:clearDismissal')
       runBackgroundUpdateCheck(nudge.id)
     }
   } finally {

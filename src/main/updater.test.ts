@@ -183,6 +183,24 @@ describe('updater', () => {
     expect(powerMonitorOnMock).not.toHaveBeenCalled()
   })
 
+  it('survives a menu check after the main window was destroyed', async () => {
+    // Regression: on macOS the app outlives its last window; "Check for
+    // Updates" then sent status into a destroyed webContents and crashed the
+    // main process with "Object has been destroyed".
+    autoUpdaterMock.checkForUpdates.mockReturnValue(new Promise(() => {}))
+    const sendMock = vi.fn()
+    const mainWindow = {
+      isDestroyed: () => true,
+      webContents: { send: sendMock, isDestroyed: () => true }
+    }
+
+    const { setupAutoUpdater, checkForUpdatesFromMenu } = await import('./updater')
+    setupAutoUpdater(mainWindow as never, { getLastUpdateCheckAt: () => Date.now() })
+
+    expect(() => checkForUpdatesFromMenu()).not.toThrow()
+    expect(sendMock).not.toHaveBeenCalled()
+  })
+
   it('deduplicates identical check errors from the event and rejected promise', async () => {
     autoUpdaterMock.checkForUpdates.mockImplementation(() => {
       autoUpdaterMock.emit('checking-for-update')
