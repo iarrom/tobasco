@@ -41,6 +41,22 @@ const STARTUP_COMMAND_READY_MAX_WAIT_MS = 1500
 const POST_SHELL_READY_STARTUP_COMMAND_DELAY_MS = 30
 const POST_SHELL_READY_STARTUP_COMMAND_FALLBACK_MS = 200
 const SHELL_READY_MARKER_ESCAPED = '\\033]777;orca-shell-ready\\007'
+// Why: after writing the agent-launch line we watch for OSC 133;C (preexec),
+// which the Orca shell wrapper emits the instant a command actually starts
+// running. If it never arrives, the submit byte was dropped by a startup race
+// (shell not yet in raw mode) and the prompt sits idle — so re-send. The
+// window is generous because 133;C fires within tens of ms of a real submit;
+// waiting longer only costs latency on an already-broken launch.
+const STARTUP_COMMAND_CONFIRM_TIMEOUT_MS = 1500
+// Why: cap re-sends so a shell whose wrapper never emits 133;C (user clobbered
+// preexec_functions) can't type the command into an already-running agent
+// indefinitely. Two attempts clears the observed startup-race flake.
+const STARTUP_COMMAND_MAX_RESENDS = 2
+// OSC 133;C (command start) as emitted by the Orca bash/zsh wrapper.
+const OSC133_COMMAND_START = '\x1b]133;C'
+// Ctrl-U: clears any partially-typed (but unsubmitted) line before a re-send so
+// a stale `claude` can't concatenate into `claudeclaude`.
+const CLEAR_LINE = '\x15'
 
 export type ShellReadySignal = {
   postMarkerBytesObserved: boolean
@@ -448,11 +464,35 @@ export function writeStartupCommandWhenShellReady(
   // Why: only Orca-wrapped bash/zsh have bracketed-paste mode active, so
   // multiline startup commands are wrapped in ESC[200~/ESC[201~ only there;
   // other shells keep the raw submit path to avoid echoing the markers.
-  options: { bracketedPasteSafe?: boolean } = {}
+  // confirmViaOsc133: the Orca wrapper is active and emits OSC 133;C on
+  // preexec, so we can verify the launch actually started and re-send if a
+  // startup race swallowed the first submit (empty prompt, agent never ran).
+  options: { bracketedPasteSafe?: boolean; confirmViaOsc133?: boolean } = {}
 ): void {
   let sent = false
   let postReadyTimer: ReturnType<typeof setTimeout> | null = null
   let postReadyDataDisposable: { dispose: () => void } | null = null
+  let confirmTimer: ReturnType<typeof setTimeout> | null = null
+  let confirmDataDisposable: { dispose: () => void } | null = null
+  let resendsLeft = STARTUP_COMMAND_MAX_RESENDS
+
+  // Why CR on Windows: PowerShell's PSReadLine and cmd.exe submit the line
+  // on CR (`\r`) — a bare LF leaves the command typed at the prompt but
+  // unsubmitted. POSIX shells (bash/zsh) treat either CR or LF as Enter.
+  const submit = process.platform === 'win32' ? '\r' : '\n'
+  const submissionBytes = buildStartupCommandSubmission(startupCommand, {
+    submit,
+    bracketedPasteSafe: options.bracketedPasteSafe === true
+  })
+
+  const stopConfirmation = (): void => {
+    if (confirmTimer !== null) {
+      clearTimeout(confirmTimer)
+      confirmTimer = null
+    }
+    confirmDataDisposable?.dispose()
+    confirmDataDisposable = null
+  }
 
   const cleanup = (): void => {
     sent = true
@@ -462,6 +502,38 @@ export function writeStartupCommandWhenShellReady(
     }
     postReadyDataDisposable?.dispose()
     postReadyDataDisposable = null
+    stopConfirmation()
+  }
+
+  // Why: verify the submit actually started a command. 133;C fires from the
+  // wrapper's preexec the moment the line is accepted; if it never arrives the
+  // prompt is still idle, so clear any stray typed text and re-send. Only armed
+  // for wrapper shells (confirmViaOsc133) — writing into a non-wrapped shell
+  // that already launched the agent would feed the re-send into its stdin.
+  const onConfirmTimeout = (): void => {
+    confirmTimer = null
+    if (resendsLeft <= 0) {
+      // Give up: 133;C never observed after the last re-send. Better to leave
+      // the shell at an idle prompt than to keep typing into a possibly-running
+      // agent's stdin.
+      stopConfirmation()
+      return
+    }
+    resendsLeft -= 1
+    proc.write(`${CLEAR_LINE}${submissionBytes}`)
+    confirmTimer = setTimeout(onConfirmTimeout, STARTUP_COMMAND_CONFIRM_TIMEOUT_MS)
+  }
+
+  const armSubmissionConfirmation = (): void => {
+    if (options.confirmViaOsc133 !== true) {
+      return
+    }
+    confirmDataDisposable = proc.onData((data) => {
+      if (typeof data === 'string' && data.includes(OSC133_COMMAND_START)) {
+        stopConfirmation()
+      }
+    })
+    confirmTimer = setTimeout(onConfirmTimeout, STARTUP_COMMAND_CONFIRM_TIMEOUT_MS)
   }
 
   const flush = (): void => {
@@ -479,24 +551,13 @@ export function writeStartupCommandWhenShellReady(
     // open for the pane. Spawning `shell -c <command>; exec shell -l` would
     // avoid the race, but it would also replace the session after the agent
     // exits and break "stay in this terminal" workflows.
-    // Why CR on Windows: PowerShell's PSReadLine and cmd.exe submit the line
-    // on CR (`\r`) — a bare LF leaves the command typed at the prompt but
-    // unsubmitted, forcing the user to press Enter after Orca launches the
-    // agent or setup script. POSIX shells (bash/zsh) treat either CR or LF as
-    // Enter under ICRNL, so CR works there too, but this code path is reached
-    // on Windows as well as POSIX via writeStartupCommandWhenShellReady.
-    const submit = process.platform === 'win32' ? '\r' : '\n'
     // Why: startup commands are usually long, quoted agent launches. Writing
     // them in one PTY call after the shell-ready barrier avoids the incremental
     // paste behavior that still dropped characters in practice. Multiline
     // prompts are additionally wrapped in bracketed paste (see the helper) so
     // embedded newlines are inserted literally instead of submitting early.
-    proc.write(
-      buildStartupCommandSubmission(startupCommand, {
-        submit,
-        bracketedPasteSafe: options.bracketedPasteSafe === true
-      })
-    )
+    proc.write(submissionBytes)
+    armSubmissionConfirmation()
   }
 
   const schedulePostReadyFlush = (): void => {

@@ -811,6 +811,10 @@ export class LocalPtyProvider implements IPtyProvider {
       const spawnedShellName = getSpawnedShellName(shellPath).toLowerCase()
       const bracketedPasteSafe =
         process.platform !== 'win32' && (spawnedShellName === 'bash' || spawnedShellName === 'zsh')
+      // Why: the shell-ready wrapper emits OSC 133;C on preexec, so when it is
+      // active we can confirm the launch line actually started and re-send if a
+      // startup race swallowed the first submit (idle prompt, agent never ran).
+      const confirmViaOsc133 = shellReadyLaunch?.supportsReadyMarker === true
       writeStartupCommandWhenShellReady(
         shellReadyPromise,
         proc,
@@ -818,7 +822,7 @@ export class LocalPtyProvider implements IPtyProvider {
         (cleanup) => {
           startupCommandCleanup = cleanup
         },
-        { bracketedPasteSafe }
+        { bracketedPasteSafe, confirmViaOsc133 }
       )
     }
 

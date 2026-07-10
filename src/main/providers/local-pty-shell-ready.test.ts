@@ -224,6 +224,74 @@ describe('writeStartupCommandWhenShellReady', () => {
 
     expect(proc._writes).toEqual([`${command}\n`])
   })
+
+  // Why: regression for the "empty prompt" launch flake. When a startup race
+  // swallows the first submit and no OSC 133;C (command start) arrives, the
+  // command is re-sent — cleared first with Ctrl-U so a partially-typed line
+  // can't concatenate — so the agent still launches without manual retyping.
+  it('re-sends the startup command when OSC 133;C is never observed', async () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' })
+    const proc = createMockProc()
+    const ready = Promise.resolve()
+    writeStartupCommandWhenShellReady(ready, proc, 'claude', () => {}, {
+      confirmViaOsc133: true
+    })
+
+    await ready
+    proc._emitData('\r\nuser@host % ')
+    vi.advanceTimersByTime(30)
+    await Promise.resolve()
+    expect(proc._writes).toEqual(['claude\n'])
+
+    // No 133;C within the confirm window → clear the line and re-send once.
+    vi.advanceTimersByTime(1500)
+    expect(proc._writes).toEqual(['claude\n', '\x15claude\n'])
+
+    // Still nothing → second (final) re-send.
+    vi.advanceTimersByTime(1500)
+    expect(proc._writes).toEqual(['claude\n', '\x15claude\n', '\x15claude\n'])
+
+    // Cap reached → stop typing into a possibly-running agent's stdin.
+    vi.advanceTimersByTime(1500)
+    expect(proc._writes).toEqual(['claude\n', '\x15claude\n', '\x15claude\n'])
+  })
+
+  it('does not re-send once OSC 133;C confirms the command started', async () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' })
+    const proc = createMockProc()
+    const ready = Promise.resolve()
+    writeStartupCommandWhenShellReady(ready, proc, 'claude', () => {}, {
+      confirmViaOsc133: true
+    })
+
+    await ready
+    proc._emitData('\r\nuser@host % ')
+    vi.advanceTimersByTime(30)
+    await Promise.resolve()
+    expect(proc._writes).toEqual(['claude\n'])
+
+    // The wrapper's preexec emits 133;C the instant the line is accepted.
+    proc._emitData('\x1b]133;C\x07')
+    vi.advanceTimersByTime(4500)
+    expect(proc._writes).toEqual(['claude\n'])
+  })
+
+  it('does not verify or re-send when the shell is not an Orca wrapper', async () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' })
+    const proc = createMockProc()
+    const ready = Promise.resolve()
+    // confirmViaOsc133 omitted: a non-wrapper shell never emits 133;C, so
+    // re-sending would risk typing into a running agent's stdin.
+    writeStartupCommandWhenShellReady(ready, proc, 'claude', () => {})
+
+    await ready
+    proc._emitData('\r\nuser@host % ')
+    vi.advanceTimersByTime(30)
+    await Promise.resolve()
+    vi.advanceTimersByTime(4500)
+
+    expect(proc._writes).toEqual(['claude\n'])
+  })
 })
 
 describe('scanForShellReady', () => {
