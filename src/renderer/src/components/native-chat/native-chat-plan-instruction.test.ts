@@ -3,6 +3,7 @@ import {
   isNativeChatPlanFilePath,
   nativeChatPlanRelativePath,
   nativeChatPlanTitleAndPreview,
+  unwrapNativeChatPlanPrompt,
   wrapNativeChatPlanPrompt
 } from './native-chat-plan-instruction'
 
@@ -18,6 +19,25 @@ describe('wrapNativeChatPlanPrompt', () => {
   it('returns empty/whitespace input unchanged', () => {
     expect(wrapNativeChatPlanPrompt('')).toBe('')
     expect(wrapNativeChatPlanPrompt('   ')).toBe('   ')
+  })
+})
+
+describe('unwrapNativeChatPlanPrompt', () => {
+  it('round-trips the wrapped task text exactly', () => {
+    const task = 'Нам надо сделать privacy policy,\ncookie banner с google analytics'
+    expect(unwrapNativeChatPlanPrompt(wrapNativeChatPlanPrompt(task))).toBe(task)
+  })
+
+  it('returns null for a plain (non-wrapped) prompt', () => {
+    expect(unwrapNativeChatPlanPrompt('just fix the bug')).toBeNull()
+  })
+
+  it('returns null when the wrapper has no task body', () => {
+    expect(unwrapNativeChatPlanPrompt('You are in Plan mode. Do NOT edit code.')).toBeNull()
+  })
+
+  it('does not trip on a user prompt that merely mentions Task:', () => {
+    expect(unwrapNativeChatPlanPrompt('см. Task:\nописание')).toBeNull()
   })
 })
 

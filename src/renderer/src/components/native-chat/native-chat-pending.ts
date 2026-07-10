@@ -5,6 +5,7 @@
 
 import { isTextBlock, type NativeChatMessage } from '../../../../shared/native-chat-types'
 import { stripImagePromptMarker } from './native-chat-image-transcript-markers'
+import { unwrapNativeChatPlanPrompt } from './native-chat-plan-instruction'
 import { setBoundedScopeCacheEntry } from './native-chat-composer-scope-cache'
 import type { NativeChatLaunchPrompt } from '@/lib/native-chat-launch-prompt'
 
@@ -110,7 +111,12 @@ function userMessageText(message: NativeChatMessage): string | null {
     .filter(isTextBlock)
     .map((block) => block.text)
     .join(' ')
-  return normalize(text)
+  // Plan mode wraps the sent turn with a directive, but the optimistic echo
+  // stores what the user typed — match on the unwrapped task or the echo
+  // never prunes and sticks to the bottom of the chat. The image marker is
+  // stripped first so an attachment prefix can't hide the wrapper.
+  const withoutMarker = stripImagePromptMarker(text).trim()
+  return normalize(unwrapNativeChatPlanPrompt(withoutMarker) ?? withoutMarker)
 }
 
 function matchingUserMessageTexts(messages: NativeChatMessage[]): Set<string> {

@@ -21,7 +21,8 @@ import {
   writePendingSendCache,
   type NativeChatPendingSend
 } from './native-chat-pending'
-import { stripNoiseMessages } from './native-chat-noise'
+import { stripNoiseMessages, unwrapPlanPromptMessages } from './native-chat-noise'
+import { wrapNativeChatPlanPrompt } from './native-chat-plan-instruction'
 
 function userMessage(id: string, text: string): NativeChatMessage {
   return {
@@ -44,6 +45,39 @@ function assistantMessage(id: string, text: string): NativeChatMessage {
 }
 
 const pendingOf = (id: string, text: string): NativeChatPendingSend => ({ id, text, sentAt: 100 })
+
+describe('plan-wrapped turns', () => {
+  it('prunes the raw echo once the plan-wrapped turn advances', () => {
+    const task = 'Нам надо сделать privacy policy и cookie banner'
+    const pending = [pendingOf('p1', task)]
+    const next = prunePendingSends(pending, [
+      userMessage('m1', wrapNativeChatPlanPrompt(task)),
+      assistantMessage('m2', 'Изучаю проект…')
+    ])
+    expect(next).toEqual([])
+  })
+
+  it('hides the queued bubble as soon as the wrapped turn is represented', () => {
+    const task = 'Нам надо сделать privacy policy'
+    const rendered = pendingSendsAsMessages(
+      [pendingOf('p1', task)],
+      [userMessage('m1', wrapNativeChatPlanPrompt(task))]
+    )
+    expect(rendered).toEqual([])
+  })
+
+  it('unwrapPlanPromptMessages rewrites the bubble text to the task only', () => {
+    const task = 'Нам надо сделать privacy policy'
+    const [message] = unwrapPlanPromptMessages([userMessage('m1', wrapNativeChatPlanPrompt(task))])
+    expect(message.blocks).toEqual([{ type: 'text', text: task }])
+  })
+
+  it('unwrapPlanPromptMessages keeps non-plan messages by reference', () => {
+    const plain = userMessage('m1', 'обычный вопрос')
+    const [message] = unwrapPlanPromptMessages([plain])
+    expect(message).toBe(plain)
+  })
+})
 
 describe('prunePendingSends', () => {
   it('returns the same reference when there is nothing pending', () => {

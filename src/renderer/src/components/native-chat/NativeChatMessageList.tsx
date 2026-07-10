@@ -5,7 +5,7 @@ import type { CommentMarkdownLinkClickHandler } from '@/components/sidebar/Comme
 import { translate } from '@/i18n/i18n'
 import type { NativeChatLiveSession } from './use-native-chat-live-session'
 import { orderNativeChatMessages } from './native-chat-message-grouping'
-import { stripNoiseMessages } from './native-chat-noise'
+import { stripNoiseMessages, unwrapPlanPromptMessages } from './native-chat-noise'
 import { foldToolMessages, splitNativeChatBlocks } from './native-chat-tool-fold'
 import { isNearBottom, shouldShowJumpToLatest, type ScrollGeometry } from './native-chat-autoscroll'
 import { MessageRow } from './NativeChatMessageRow'
@@ -151,7 +151,10 @@ export function NativeChatMessageList({
   // assistant message it belongs to, ordered stably, so a turn's tools collapse
   // under one run.
   const messages = useMemo(
-    () => foldToolMessages(orderNativeChatMessages(stripNoiseMessages(session.messages))),
+    () =>
+      foldToolMessages(
+        orderNativeChatMessages(unwrapPlanPromptMessages(stripNoiseMessages(session.messages)))
+      ),
     [session.messages]
   )
 

@@ -1,5 +1,6 @@
 import { isTextBlock, type NativeChatMessage } from '../../../../shared/native-chat-types'
 import { isHarnessInjectedUserTurnText } from '../../../../shared/harness-injected-user-turns'
+import { unwrapNativeChatPlanPrompt } from './native-chat-plan-instruction'
 
 // Why: harness machinery turns land in the transcript but are not real user
 // messages, so the chat filters them out (they were confusingly rendered as
@@ -33,4 +34,31 @@ export function isNoiseMessage(message: NativeChatMessage): boolean {
 /** Drop harness-noise messages from a transcript. */
 export function stripNoiseMessages(messages: readonly NativeChatMessage[]): NativeChatMessage[] {
   return messages.filter((m) => !isNoiseMessage(m))
+}
+
+/** [FORK] Display pass: a plan-mode user turn carries the wrapping directive in
+ *  the transcript, but the bubble should read as what the user actually typed —
+ *  rewrite its text blocks to the unwrapped task. Pure; non-plan messages pass
+ *  through unchanged (same references, so memoized rows don't re-render). */
+export function unwrapPlanPromptMessages(
+  messages: readonly NativeChatMessage[]
+): NativeChatMessage[] {
+  return messages.map((message) => {
+    if (message.role !== 'user') {
+      return message
+    }
+    let rewrote = false
+    const blocks = message.blocks.map((block) => {
+      if (!isTextBlock(block)) {
+        return block
+      }
+      const task = unwrapNativeChatPlanPrompt(block.text)
+      if (task === null) {
+        return block
+      }
+      rewrote = true
+      return { ...block, text: task }
+    })
+    return rewrote ? { ...message, blocks } : message
+  })
 }

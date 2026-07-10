@@ -23,6 +23,11 @@ const PLAN_MODE_DIRECTIVE = [
   'Do not implement anything yet — only research and write the plan.'
 ].join('\n')
 
+// Separator between the directive and the user's task. Unwrap keys on this
+// plus the directive's opening words so it stays robust to directive edits.
+const PLAN_TASK_SEPARATOR = '\n\n---\n\nTask:\n'
+const PLAN_DIRECTIVE_OPENING = 'You are in Plan mode.'
+
 /** Wrap a normal chat turn with the plan-mode directive. Slash commands and empty
  *  submits are handled by the caller and must not be wrapped. */
 export function wrapNativeChatPlanPrompt(userText: string): string {
@@ -30,7 +35,22 @@ export function wrapNativeChatPlanPrompt(userText: string): string {
   if (trimmed.length === 0) {
     return userText
   }
-  return `${PLAN_MODE_DIRECTIVE}\n\n---\n\nTask:\n${userText}`
+  return `${PLAN_MODE_DIRECTIVE}${PLAN_TASK_SEPARATOR}${userText}`
+}
+
+/** The user's own task text out of a plan-wrapped turn, or null when the text
+ *  is not a plan wrapper. Used to display the bubble as what the user actually
+ *  typed and to match optimistic send echoes against the transcript turn. */
+export function unwrapNativeChatPlanPrompt(text: string): string | null {
+  if (!text.startsWith(PLAN_DIRECTIVE_OPENING)) {
+    return null
+  }
+  const separatorIndex = text.indexOf(PLAN_TASK_SEPARATOR)
+  if (separatorIndex === -1) {
+    return null
+  }
+  const task = text.slice(separatorIndex + PLAN_TASK_SEPARATOR.length)
+  return task.trim().length > 0 ? task : null
 }
 
 /** Normalize path separators and drop a leading `./` so Windows and POSIX paths
