@@ -23,6 +23,20 @@ export function isTrustedCompactImageSrc(src: string | undefined): src is string
   )
 }
 
+// [FORK] A file-reference href: `file:` URI, Windows drive path, or any
+// protocol-less path (agent-authored links and linkified bare paths). These
+// never navigate — the surface's link handler routes them to an in-app open.
+export function isFileReferenceHref(href: string | undefined): boolean {
+  const value = href?.trim() ?? ''
+  if (!value || value.startsWith('#')) {
+    return false
+  }
+  if (value.toLowerCase().startsWith('file:') || /^[A-Za-z]:[\\/]/.test(value)) {
+    return true
+  }
+  return !/^[A-Za-z][A-Za-z0-9+.-]*:/.test(value)
+}
+
 function handleMarkdownAnchorClick(
   event: React.MouseEvent<HTMLAnchorElement>,
   href: string | undefined,
@@ -179,6 +193,21 @@ export function createDocumentCommentMarkdownComponents(
         // Why: GitHub's API returns uploaded videos as bare attachment links;
         // GitHub.com upgrades them to media embeds in its own renderer.
         <GitHubUserAttachmentVideo href={href}>{children}</GitHubUserAttachmentVideo>
+      ) : isFileReferenceHref(href) ? (
+        // [FORK] Workspace file reference: blue link, no browser navigation —
+        // preventDefault unconditionally (a relative href would otherwise try
+        // to navigate the renderer) and let the surface's handler open it
+        // in-app.
+        <a
+          href={href || undefined}
+          className="break-all text-blue-600 underline underline-offset-2 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+          onClick={(e) => {
+            e.preventDefault()
+            handleMarkdownAnchorClick(e, href, onLinkClick)
+          }}
+        >
+          {children}
+        </a>
       ) : (
         <a
           href={href || undefined}

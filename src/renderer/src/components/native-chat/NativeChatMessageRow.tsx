@@ -274,6 +274,9 @@ export function MessageRow({
                     className="text-sm"
                     onLinkClick={onLinkClick}
                     allowFileUriLinks={allowFileUriLinks}
+                    // [FORK] Bare file paths in agent prose become in-app links
+                    // only when this pane can resolve them (same gate as file:).
+                    linkifyFilePaths={allowFileUriLinks}
                   />
                 )}
               </div>

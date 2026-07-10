@@ -13,6 +13,7 @@ import {
   isTrustedCompactImageSrc,
   type CommentMarkdownLinkClickHandler
 } from './comment-markdown-element-renderers'
+import { remarkFilePathReferences } from './comment-markdown-file-path-references'
 
 export type { CommentMarkdownLinkClickHandler } from './comment-markdown-element-renderers'
 
@@ -51,6 +52,12 @@ const commentMarkdownUrlTransform: UrlTransform = (value, key, node) => {
 
 const commentMarkdownFileUriUrlTransform: UrlTransform = (value, key, node) => {
   if (key === 'href' && node?.tagName === 'a' && value.trim().toLowerCase().startsWith('file:')) {
+    return value
+  }
+  // [FORK] Windows drive paths ("C:\repo\x.ts") read as an unknown "c:"
+  // protocol to the default transform and would be stripped; they're valid
+  // in-app file references here.
+  if (key === 'href' && node?.tagName === 'a' && /^[A-Za-z]:[\\/]/.test(value.trim())) {
     return value
   }
   return commentMarkdownUrlTransform(value, key, node)
@@ -185,6 +192,9 @@ type CommentMarkdownProps = React.ComponentPropsWithoutRef<'div'> & {
   githubRepo?: GitHubRepoReference | null
   onLinkClick?: CommentMarkdownLinkClickHandler
   allowFileUriLinks?: boolean
+  /** [FORK] Linkify bare workspace file paths in prose (native chat only —
+   *  the surface whose link handler resolves them to an in-app open). */
+  linkifyFilePaths?: boolean
 }
 
 // Why forwardRef + rest props: Radix's HoverCardTrigger asChild merges a ref
@@ -199,6 +209,7 @@ const CommentMarkdown = React.memo(
       githubRepo,
       onLinkClick,
       allowFileUriLinks = false,
+      linkifyFilePaths = false,
       ...rest
     },
     ref
@@ -214,8 +225,12 @@ const CommentMarkdown = React.memo(
         : createCompactCommentMarkdownComponents(onLinkClick)
     }, [variant, onLinkClick])
     const activeRemarkPlugins = React.useMemo(
-      () => (githubRepo ? [...remarkPlugins, remarkGitHubReferences(githubRepo)] : remarkPlugins),
-      [githubRepo]
+      () => [
+        ...remarkPlugins,
+        ...(githubRepo ? [remarkGitHubReferences(githubRepo)] : []),
+        ...(linkifyFilePaths ? [remarkFilePathReferences()] : [])
+      ],
+      [githubRepo, linkifyFilePaths]
     )
 
     return (
