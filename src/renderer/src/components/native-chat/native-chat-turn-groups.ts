@@ -87,10 +87,12 @@ export function buildNativeChatTurnGroups(
         groups.push({ kind: 'message', message: answerMessage })
       }
     } else {
-      // Live only while this turn is still in flight and hasn't produced any
-      // answer text yet — then the steps stay expanded and shimmering. As soon as
-      // the answer starts (or the agent stops) they collapse to "Worked for …".
-      const live = options.working && answer.length === 0 && isLastResponse
+      // Live while this turn is still in flight — trailing prose mid-turn is an
+      // INTERMEDIATE result (Claude interleaves prose between tool batches), not
+      // the final answer, so it must not collapse the steps to "Worked for …":
+      // the next tool call would re-expand them and the header would seesaw.
+      // Collapse happens only when the agent stops.
+      const live = options.working && isLastResponse
       groups.push({
         kind: 'work',
         id: `work:${steps[0].id}`,

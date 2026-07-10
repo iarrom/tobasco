@@ -19,17 +19,23 @@ export const NATIVE_CHAT_STREAMING_ID = 'streaming'
 // and is suppressed. Agents that stream genuine partial prose keep it.
 const AGENTS_WITHOUT_PROSE_PREVIEW: ReadonlySet<AgentType> = new Set(['claude'])
 
-/** [FORK] Text of the transcript's last assistant message that carries prose —
- *  the committed-answer baseline the TUI-scraped live preview is diffed against
- *  (see claude-tui-live-preview.ts). */
-export function lastAssistantProseText(messages: readonly NativeChatMessage[]): string {
-  for (let i = messages.length - 1; i >= 0; i--) {
+/** [FORK] Concatenated text of the transcript's most recent assistant prose
+ *  messages — the committed baseline the TUI-scraped live preview is diffed
+ *  against (see claude-tui-live-preview.ts). Several messages, not just the
+ *  last: Claude interleaves prose between tool batches, and the viewport's
+ *  last ⏺ block can still show a paragraph committed a few messages back. */
+export function recentAssistantProseText(
+  messages: readonly NativeChatMessage[],
+  count = 6
+): string {
+  const texts: string[] = []
+  for (let i = messages.length - 1; i >= 0 && texts.length < count; i--) {
     const text = assistantText(messages[i])
     if (text.length > 0) {
-      return text
+      texts.push(text)
     }
   }
-  return ''
+  return texts.join('\n\n')
 }
 
 /** Concatenated text of an assistant message's text blocks, trimmed. */

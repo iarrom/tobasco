@@ -194,27 +194,31 @@ function fingerprint(text: string): string {
 }
 
 /**
- * Decide whether parsed viewport prose is genuinely in-flight: prose already
- * present in the last transcript assistant answer is committed, not streaming
- * (the viewport keeps showing it while follow-up tools run).
+ * Decide what part of parsed viewport prose is genuinely in-flight. The
+ * viewport keeps showing committed paragraphs while follow-up work runs (and
+ * a streaming continuation can share its ⏺ block with an already-committed
+ * paragraph), so the committed test runs PER PARAGRAPH: paragraphs already in
+ * the recent transcript prose are dropped, and only the new tail is returned.
+ * Null when nothing new is streaming.
  */
 export function deriveTuiStreamingProse(args: {
   prose: string | null
-  /** Concatenated text of the transcript's last assistant prose message. */
-  lastAssistantProse: string
+  /** Concatenated recent assistant prose (see recentAssistantProseText). */
+  recentAssistantProse: string
 }): string | null {
-  const { prose, lastAssistantProse } = args
+  const { prose, recentAssistantProse } = args
   if (!prose) {
     return null
   }
-  const proseKey = fingerprint(prose)
-  if (proseKey.length === 0) {
-    return null
-  }
-  // The viewport may only show the answer's tail (long answers scroll out of
-  // the alt screen), so containment — not equality — is the committed test.
-  if (fingerprint(lastAssistantProse).includes(proseKey)) {
-    return null
-  }
-  return prose
+  // Containment, not equality: long content scrolls out of the alt screen, so
+  // the viewport may only show a paragraph's tail.
+  const committedKey = fingerprint(recentAssistantProse)
+  const fresh = prose
+    .split('\n\n')
+    .filter((paragraph) => {
+      const key = fingerprint(paragraph)
+      return key.length > 0 && !committedKey.includes(key)
+    })
+    .join('\n\n')
+  return fresh.length > 0 ? fresh : null
 }

@@ -2,11 +2,11 @@
 // scraped from the agent TUI's viewport (transcript records only land when a
 // whole content block completes; the hook's lastAssistantMessage carries tool
 // output, not prose). Other agents keep the hook-preview path.
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import type { AgentType, NativeChatMessage } from '../../../../shared/native-chat-types'
 import {
   deriveNativeChatStreamingText,
-  lastAssistantProseText
+  recentAssistantProseText
 } from '../../../../shared/native-chat-streaming'
 import { deriveTuiStreamingProse } from './claude-tui-live-preview'
 import { useClaudeTuiLivePreview } from './use-claude-tui-live-preview'
@@ -35,12 +35,26 @@ export function useNativeChatLiveStream(args: {
     enabled: hookWorking && agent === 'claude'
   })
 
+  // Sticky prose: TUI frames alternate between showing the streamed paragraph
+  // and showing follow-up tool activity, so a frame without prose must NOT
+  // blank the bubble — hold the last streamed prose until the transcript
+  // supersedes it (the per-paragraph committed filter below returns null) or
+  // the turn ends. Keyed by pane so a pane switch never leaks prose across.
+  const heldProseRef = useRef<{ ptyId: string | null; prose: string } | null>(null)
+  if (!hookWorking || heldProseRef.current?.ptyId !== targetPtyId) {
+    heldProseRef.current = null
+  }
+  if (tuiPreview?.prose) {
+    heldProseRef.current = { ptyId: targetPtyId, prose: tuiPreview.prose }
+  }
+  const candidateProse = tuiPreview?.prose ?? heldProseRef.current?.prose ?? null
+
   const streamingText = useMemo(() => {
     if (agent === 'claude') {
       return hookWorking
         ? deriveTuiStreamingProse({
-            prose: tuiPreview?.prose ?? null,
-            lastAssistantProse: lastAssistantProseText(messages)
+            prose: candidateProse,
+            recentAssistantProse: recentAssistantProseText(messages)
           })
         : null
     }
@@ -50,7 +64,7 @@ export function useNativeChatLiveStream(args: {
       working: hookWorking,
       agent
     })
-  }, [messages, hookPreview, hookWorking, agent, tuiPreview])
+  }, [messages, hookPreview, hookWorking, agent, candidateProse])
 
   const liveStatus =
     agent === 'claude' && hookWorking && tuiPreview?.status

@@ -44,6 +44,20 @@ describe('buildNativeChatTurnGroups', () => {
     expect(groups[1].kind === 'work' && groups[1].live).toBe(true)
   })
 
+  it('stays live when intermediate prose lands mid-turn (no premature "Worked")', () => {
+    const messages = [
+      msg('user', [text('release it')]),
+      msg('assistant', [toolCall('Bash')]),
+      msg('assistant', [text('Committed, pushed to main, running the build:')])
+    ]
+    const groups = buildNativeChatTurnGroups(messages, { working: true })
+    expect(groups.map((g) => g.kind)).toEqual(['message', 'work', 'message'])
+    // The trailing prose is an intermediate result while the agent still works —
+    // the steps must stay live instead of seesawing collapsed/expanded as the
+    // next tool call arrives.
+    expect(groups[1].kind === 'work' && groups[1].live).toBe(true)
+  })
+
   it('does not collapse a plain answer with no work steps', () => {
     const messages = [msg('user', [text('hi')]), msg('assistant', [text('hello')])]
     const groups = buildNativeChatTurnGroups(messages, { working: false })
