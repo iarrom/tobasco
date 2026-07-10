@@ -110,6 +110,7 @@ import {
   normalizeExecutionHostId,
   normalizeVisibleExecutionHostIds,
   toSshExecutionHostId,
+  toRuntimeExecutionHostId,
   type ExecutionHostId
 } from '../shared/execution-host'
 import { toRelaySshPtyId } from './providers/ssh-pty-id'
@@ -117,6 +118,12 @@ import {
   migrateUiHostScopeSshTargetId,
   migrateWorkspaceSessionSshTargetId
 } from './ssh/ssh-target-id-migration'
+// [FORK] runtime-environment re-adoption (stale env id self-heal).
+import {
+  migrateUiHostScopeRuntimeEnvironmentId,
+  migrateWorkspaceSessionRuntimeEnvironmentId
+} from './runtime-environment-id-migration'
+import type { RemovedRuntimeEnvironmentTombstone } from '../shared/runtime-environments'
 import { isWslUncPath } from '../shared/wsl-paths'
 import {
   isTerminalLeafId,
@@ -2190,6 +2197,8 @@ const MAX_CLAUDE_LIVE_PTY_SESSION_IDS = 200
 // Why: bound the removed-SSH-target history so remove/re-add churn can't grow
 // the state file without limit. Re-adoption only needs recent removals.
 const MAX_REMOVED_SSH_TARGET_TOMBSTONES = 50
+// [FORK]
+const MAX_REMOVED_RUNTIME_ENVIRONMENT_TOMBSTONES = 50
 
 function normalizeClaudeLivePtySessionIds(value: unknown): string[] {
   if (!Array.isArray(value)) {
@@ -6213,6 +6222,152 @@ export class Store {
       this.scheduleSave()
     }
     return repoCount
+  }
+
+  // ── [FORK] Runtime environment tombstones & re-adoption ────────────
+
+  getRemovedRuntimeEnvironmentTombstones(): RemovedRuntimeEnvironmentTombstone[] {
+    return [...(this.state.removedRuntimeEnvironmentTombstones ?? [])]
+  }
+
+  addRemovedRuntimeEnvironmentTombstone(tombstone: RemovedRuntimeEnvironmentTombstone): void {
+    const existing = this.state.removedRuntimeEnvironmentTombstones ?? []
+    // Why: dedupe by oldEnvironmentId so a remove/re-remove of the same id
+    // can't stack duplicate tombstones. Newest wins.
+    const filtered = existing.filter((t) => t.oldEnvironmentId !== tombstone.oldEnvironmentId)
+    // Cap the history so pathological churn can't grow the state file unbounded.
+    this.state.removedRuntimeEnvironmentTombstones = [...filtered, tombstone].slice(
+      -MAX_REMOVED_RUNTIME_ENVIRONMENT_TOMBSTONES
+    )
+    this.scheduleSave()
+  }
+
+  removeRemovedRuntimeEnvironmentTombstone(oldEnvironmentId: string): void {
+    const existing = this.state.removedRuntimeEnvironmentTombstones
+    if (!existing?.some((t) => t.oldEnvironmentId === oldEnvironmentId)) {
+      return
+    }
+    this.state.removedRuntimeEnvironmentTombstones = existing.filter(
+      (t) => t.oldEnvironmentId !== oldEnvironmentId
+    )
+    this.scheduleSave()
+  }
+
+  /**
+   * Re-point every persisted carrier pinned to a removed runtime environment id
+   * onto a re-paired environment's id, so orphaned remote workspaces (and their
+   * restored chat/terminal tabs) reattach instead of failing every launch with
+   * `Unknown environment`. Returns the number of carriers re-pointed.
+   */
+  reassignRuntimeEnvironmentId(oldEnvironmentId: string, newEnvironmentId: string): number {
+    if (oldEnvironmentId === newEnvironmentId) {
+      return 0
+    }
+    const oldHostId = toRuntimeExecutionHostId(oldEnvironmentId)
+    const newHostId = toRuntimeExecutionHostId(newEnvironmentId)
+    let carrierCount = 0
+    for (const repo of this.state.repos) {
+      if (repo.executionHostId === oldHostId) {
+        repo.executionHostId = newHostId
+        carrierCount++
+      }
+    }
+    const repoCount = carrierCount
+    for (const meta of Object.values(this.state.worktreeMeta)) {
+      if (meta.hostId === oldHostId) {
+        meta.hostId = newHostId
+        carrierCount++
+      }
+    }
+    if (
+      migrateWorkspaceSessionRuntimeEnvironmentId(
+        this.state.workspaceSession,
+        oldEnvironmentId,
+        newEnvironmentId
+      )
+    ) {
+      carrierCount++
+    }
+    for (const session of Object.values(this.state.workspaceSessionsByHostId ?? {})) {
+      if (
+        session &&
+        migrateWorkspaceSessionRuntimeEnvironmentId(session, oldEnvironmentId, newEnvironmentId)
+      ) {
+        carrierCount++
+      }
+    }
+    // Why: the session partition is read by host id, so one stored under the
+    // removed id would be orphaned — and it holds the restored remote tabs. If
+    // the new key already has a partition, that one is live; drop the dead one.
+    const partitions = this.state.workspaceSessionsByHostId
+    const oldPartition = partitions?.[oldHostId]
+    if (partitions && oldPartition) {
+      delete partitions[oldHostId]
+      partitions[newHostId] ??= oldPartition
+      carrierCount++
+    }
+    if (migrateUiHostScopeRuntimeEnvironmentId(this.state.ui, oldEnvironmentId, newEnvironmentId)) {
+      carrierCount++
+    }
+    if (this.state.settings.activeRuntimeEnvironmentId === oldEnvironmentId) {
+      this.state.settings.activeRuntimeEnvironmentId = newEnvironmentId
+      carrierCount++
+    }
+    let setupsChanged = false
+    const keptSetups: ProjectHostSetup[] = []
+    for (const setup of this.state.projectHostSetups) {
+      if (setup.hostId !== oldHostId) {
+        keptSetups.push(setup)
+        continue
+      }
+      const duplicate = this.state.projectHostSetups.some(
+        (entry) =>
+          entry !== setup && entry.projectId === setup.projectId && entry.hostId === newHostId
+      )
+      // Why: a setup already exists for the re-paired host — the old row is a
+      // stale ghost that would violate the (projectId, hostId) uniqueness.
+      if (duplicate) {
+        setupsChanged = true
+        continue
+      }
+      setup.hostId = newHostId
+      setup.updatedAt = Date.now()
+      keptSetups.push(setup)
+      setupsChanged = true
+    }
+    if (setupsChanged) {
+      this.state.projectHostSetups = keptSetups
+      carrierCount++
+    }
+    if (repoCount > 0 || setupsChanged) {
+      this.syncProjectHostSetupCompatibilityState()
+    }
+    if (carrierCount > 0) {
+      this.scheduleSave()
+    }
+    return carrierCount
+  }
+
+  /** Runtime host ids referenced by persisted repos, worktree metas, or session
+   *  partitions. Used to detect stamps orphaned by an environment removal. */
+  getReferencedRuntimeEnvironmentIds(): string[] {
+    const ids = new Set<string>()
+    const collect = (hostId: string | null | undefined): void => {
+      const parsed = hostId ? parseExecutionHostId(hostId) : null
+      if (parsed?.kind === 'runtime') {
+        ids.add(parsed.environmentId)
+      }
+    }
+    for (const repo of this.state.repos) {
+      collect(repo.executionHostId)
+    }
+    for (const meta of Object.values(this.state.worktreeMeta)) {
+      collect(meta.hostId)
+    }
+    for (const hostId of Object.keys(this.state.workspaceSessionsByHostId ?? {})) {
+      collect(hostId)
+    }
+    return [...ids]
   }
 
   // ── SSH Remote PTY Leases ──────────────────────────────────────────

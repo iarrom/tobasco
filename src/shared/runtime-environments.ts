@@ -101,6 +101,32 @@ export function isUserManagedRuntimeEnvironment(
   return !isEphemeralVmRuntimeEnvironment(environment)
 }
 
+/** [FORK] Identity record for a removed runtime environment. Repos, worktree
+ *  metas and session partitions store only the (random) environment id, so
+ *  removing an environment strands them on a dead id. The server's E2EE public
+ *  key is stable across re-pairings, letting a re-added server re-adopt them. */
+export type RemovedRuntimeEnvironmentTombstone = {
+  /** The id the removed environment had — what orphaned carriers still point at. */
+  oldEnvironmentId: string
+  /** Server E2EE public keys from the removed environment's endpoints. */
+  publicKeysB64: string[]
+  name: string
+  /** ms epoch when the environment was removed, for pruning old tombstones. */
+  removedAt: number
+}
+
+export function buildRemovedRuntimeEnvironmentTombstone(
+  environment: KnownRuntimeEnvironment,
+  removedAt: number
+): RemovedRuntimeEnvironmentTombstone {
+  return {
+    oldEnvironmentId: environment.id,
+    publicKeysB64: [...new Set(environment.endpoints.map((endpoint) => endpoint.publicKeyB64))],
+    name: environment.name,
+    removedAt
+  }
+}
+
 export function getPreferredPairingOffer(environment: KnownRuntimeEnvironment): PairingOffer {
   const endpoint =
     environment.endpoints.find((entry) => entry.id === environment.preferredEndpointId) ??

@@ -1,6 +1,8 @@
 /* eslint-disable max-lines */
 import type { ExecutionHostId } from './execution-host'
 import type { RemovedSshTargetTombstone, SshRemotePtyLease, SshTarget } from './ssh-types'
+// [FORK]
+import type { RemovedRuntimeEnvironmentTombstone } from './runtime-environments'
 import type { Automation, AutomationExecutionTargetType, AutomationRun } from './automations-types'
 import type { WorkspaceSource } from './workspace-source'
 import type { GitHubProjectSettings } from './github-project-types'
@@ -3698,6 +3700,9 @@ export type PersistedState = {
   /** Identity records for removed SSH targets. Lets a re-added host re-adopt
    *  workspaces that were orphaned on the old target id. Pruned by age/count. */
   removedSshTargetTombstones?: RemovedSshTargetTombstone[]
+  /** [FORK] Identity records for removed runtime environments. Lets a re-paired
+   *  remote server re-adopt workspaces orphaned on the old environment id. */
+  removedRuntimeEnvironmentTombstones?: RemovedRuntimeEnvironmentTombstone[]
   sshRemotePtyLeases: SshRemotePtyLease[]
   /** Daemon session ids of live local Claude launches. Seeds the Claude
    *  live-PTY gate on startup so an early OAuth refresh cannot rotate the

@@ -190,6 +190,9 @@ import { preserveAgentAuthBeforeRestart } from './agent-auth-restart-preservatio
 import { CliInstaller } from './cli/cli-installer'
 import { installLinuxBareOrcaDispatcher } from './cli/linux-bare-orca-dispatcher'
 import { selfHealRuntimeEnvironmentFocus } from './runtime-environment-focus-self-heal'
+// [FORK]
+import { selfHealDanglingRuntimeEnvironmentStamps } from './runtime-environment-readoption'
+import { listEnvironments } from '../shared/runtime-environment-store'
 
 let mainWindow: BrowserWindow | null = null
 /** Whether a manual app.quit() (Cmd+Q, etc.) is in progress. Shared with the
@@ -1665,6 +1668,14 @@ app.whenReady().then(async () => {
     )
   }
   selfHealRuntimeEnvironmentFocus({ store, userDataPath: app.getPath('userData') })
+  try {
+    // [FORK] Why: repos/sessions stamped with a removed environment id fail
+    // every launch with `Unknown environment`; adopt them onto the only paired
+    // server. An unreadable registry must not trigger a bogus re-point.
+    selfHealDanglingRuntimeEnvironmentStamps(store, listEnvironments(app.getPath('userData')))
+  } catch {
+    /* registry unreadable — skip healing this run */
+  }
   applyAppIcon(store.getSettings().appIcon)
   if (shouldSuppressDevEducation({ isDev: is.dev })) {
     suppressDevEducationForStore(store)

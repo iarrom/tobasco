@@ -1,41 +1,15 @@
 import type { GlobalSettings } from '../../../shared/types'
+import {
+  parseRemoteRuntimePtyId,
+  toRemoteRuntimePtyId,
+  type RemoteRuntimePtyIdParts
+} from '../../../shared/remote-runtime-pty-id'
 import { RuntimeRpcCallError, getActiveRuntimeTarget } from './runtime-rpc-client'
 import { getRemoteRuntimeTerminalMultiplexer } from './remote-runtime-terminal-multiplexer'
 
-const REMOTE_PTY_ID_PREFIX = 'remote:'
-const REMOTE_PTY_OWNER_SEPARATOR = '@@'
-
-export type RemoteRuntimePtyIdParts = {
-  environmentId: string | null
-  handle: string
-}
-
-export function toRemoteRuntimePtyId(handle: string, environmentId?: string | null): string {
-  const owner = environmentId?.trim()
-  if (!owner) {
-    return `${REMOTE_PTY_ID_PREFIX}${handle}`
-  }
-  return `${REMOTE_PTY_ID_PREFIX}${encodeURIComponent(owner)}${REMOTE_PTY_OWNER_SEPARATOR}${encodeURIComponent(handle)}`
-}
-
-export function parseRemoteRuntimePtyId(ptyId: string): RemoteRuntimePtyIdParts | null {
-  if (!ptyId.startsWith(REMOTE_PTY_ID_PREFIX)) {
-    return null
-  }
-  const rest = ptyId.slice(REMOTE_PTY_ID_PREFIX.length)
-  const separatorIndex = rest.indexOf(REMOTE_PTY_OWNER_SEPARATOR)
-  if (separatorIndex === -1) {
-    return { environmentId: null, handle: rest }
-  }
-  try {
-    return {
-      environmentId: decodeURIComponent(rest.slice(0, separatorIndex)),
-      handle: decodeURIComponent(rest.slice(separatorIndex + REMOTE_PTY_OWNER_SEPARATOR.length))
-    }
-  } catch {
-    return null
-  }
-}
+// [FORK] Moved to shared so the main process can rewrite persisted pty ids
+// during runtime-environment re-adoption; re-exported so renderer imports stay.
+export { parseRemoteRuntimePtyId, toRemoteRuntimePtyId, type RemoteRuntimePtyIdParts }
 
 export function getRemoteRuntimeTerminalHandle(ptyId: string): string | null {
   return parseRemoteRuntimePtyId(ptyId)?.handle ?? null

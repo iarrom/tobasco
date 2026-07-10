@@ -7,9 +7,16 @@ import {
   resolveEnvironment
 } from '../../shared/runtime-environment-store'
 import {
+  buildRemovedRuntimeEnvironmentTombstone,
+  isUserManagedRuntimeEnvironment,
   redactRuntimeEnvironment,
   type PublicKnownRuntimeEnvironment
 } from '../../shared/runtime-environments'
+// [FORK] runtime-environment re-adoption (stale env id self-heal).
+import {
+  readoptOrphanedWorkspacesForEnvironment,
+  selfHealDanglingRuntimeEnvironmentStamps
+} from '../runtime-environment-readoption'
 import type { RuntimeStatus } from '../../shared/runtime-types'
 import type { RuntimeRpcResponse } from '../../shared/runtime-rpc-envelope'
 import type { RemoteRuntimeSubscription } from '../../shared/remote-runtime-client'
@@ -82,9 +89,16 @@ export function registerRuntimeEnvironmentHandlers(store: Store): void {
     (
       _event,
       args: { name: string; pairingCode: string }
-    ): { environment: PublicKnownRuntimeEnvironment } => ({
-      environment: redactRuntimeEnvironment(addEnvironmentFromPairingCode(getUserDataPath(), args))
-    })
+    ): { environment: PublicKnownRuntimeEnvironment } => {
+      const environment = addEnvironmentFromPairingCode(getUserDataPath(), args)
+      // [FORK] Why: re-pairing the same server mints a new environment id,
+      // stranding repos/sessions stamped with the removed one on `Unknown
+      // environment`. Re-adopt them onto the fresh id (tombstone match first,
+      // then the single-environment fallback for pre-tombstone orphans).
+      readoptOrphanedWorkspacesForEnvironment(store, environment)
+      selfHealDanglingRuntimeEnvironmentStamps(store, listEnvironments(getUserDataPath()))
+      return { environment: redactRuntimeEnvironment(environment) }
+    }
   )
   ipcMain.handle(
     'runtimeEnvironments:resolve',
@@ -95,6 +109,13 @@ export function registerRuntimeEnvironmentHandlers(store: Store): void {
     'runtimeEnvironments:remove',
     (_event, args: { selector: string }): { removed: PublicKnownRuntimeEnvironment } => {
       const removed = removeEnvironment(getUserDataPath(), args.selector)
+      // [FORK] Why: repos/sessions keep the removed id; the tombstone lets a
+      // later re-pair of the same server (matched by its E2EE key) re-adopt them.
+      if (isUserManagedRuntimeEnvironment(removed)) {
+        store.addRemovedRuntimeEnvironmentTombstone(
+          buildRemovedRuntimeEnvironmentTombstone(removed, Date.now())
+        )
+      }
       closeRemoteRuntimeRequestConnection(removed.id)
       clearSharedControlSupport(removed.id)
       if (args.selector !== removed.id) {

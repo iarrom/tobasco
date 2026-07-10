@@ -84,6 +84,11 @@ describe('registerRuntimeEnvironmentHandlers', () => {
   let store: {
     getSettings: () => { activeRuntimeEnvironmentId: string | null }
     updateSettings: ReturnType<typeof vi.fn>
+    getRemovedRuntimeEnvironmentTombstones: ReturnType<typeof vi.fn>
+    addRemovedRuntimeEnvironmentTombstone: ReturnType<typeof vi.fn>
+    removeRemovedRuntimeEnvironmentTombstone: ReturnType<typeof vi.fn>
+    getReferencedRuntimeEnvironmentIds: ReturnType<typeof vi.fn>
+    reassignRuntimeEnvironmentId: ReturnType<typeof vi.fn>
   }
 
   beforeEach(() => {
@@ -93,7 +98,12 @@ describe('registerRuntimeEnvironmentHandlers', () => {
       getSettings: () => ({ activeRuntimeEnvironmentId }),
       updateSettings: vi.fn((updates: { activeRuntimeEnvironmentId: string | null }) => {
         activeRuntimeEnvironmentId = updates.activeRuntimeEnvironmentId
-      })
+      }),
+      getRemovedRuntimeEnvironmentTombstones: vi.fn(() => []),
+      addRemovedRuntimeEnvironmentTombstone: vi.fn(),
+      removeRemovedRuntimeEnvironmentTombstone: vi.fn(),
+      getReferencedRuntimeEnvironmentIds: vi.fn(() => []),
+      reassignRuntimeEnvironmentId: vi.fn(() => 0)
     }
     getPathMock.mockReset()
     getPathMock.mockReturnValue(userDataPath)
