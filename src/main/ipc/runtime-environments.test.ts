@@ -137,6 +137,8 @@ describe('registerRuntimeEnvironmentHandlers', () => {
       'runtimeEnvironments:getStatus',
       'runtimeEnvironments:call',
       'runtimeEnvironments:subscribe',
+      // [FORK] Loopback port tunnels for remote-host browser panes.
+      'runtimeEnvironments:ensureBrowserPortTunnel',
       'runtimeEnvironments:unsubscribe'
     ])
     expect(onMock.mock.calls.map((call) => call[0])).toEqual([
@@ -156,7 +158,9 @@ describe('registerRuntimeEnvironmentHandlers', () => {
       'runtimeEnvironments:getStatus',
       'runtimeEnvironments:call',
       'runtimeEnvironments:subscribe',
-      'runtimeEnvironments:unsubscribe'
+      'runtimeEnvironments:unsubscribe',
+      // [FORK] Loopback port tunnels for remote-host browser panes.
+      'runtimeEnvironments:ensureBrowserPortTunnel'
     ])
     expect(removeAllListenersMock).toHaveBeenCalledWith('runtimeEnvironments:subscriptionBinary')
   })

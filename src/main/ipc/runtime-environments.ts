@@ -22,6 +22,12 @@ import type { RuntimeRpcResponse } from '../../shared/runtime-rpc-envelope'
 import type { RemoteRuntimeSubscription } from '../../shared/remote-runtime-client'
 import type { Store } from '../persistence'
 import { clearActiveRuntimeEnvironmentFocusIfMatches } from '../runtime-environment-focus-self-heal'
+// [FORK] Loopback port tunnels for remote-host browser panes.
+import {
+  closeBrowserPortTunnelsForEnvironment,
+  ensureBrowserPortTunnel,
+  type BrowserPortTunnelInfo
+} from '../remote-ports/remote-browser-port-tunnel'
 import { closeRemoteRuntimeRequestConnection } from './runtime-environment-request-connections'
 import {
   callRuntimeEnvironment,
@@ -40,7 +46,9 @@ const RUNTIME_ENVIRONMENT_HANDLER_CHANNELS = [
   'runtimeEnvironments:getStatus',
   'runtimeEnvironments:call',
   'runtimeEnvironments:subscribe',
-  'runtimeEnvironments:unsubscribe'
+  'runtimeEnvironments:unsubscribe',
+  // [FORK]
+  'runtimeEnvironments:ensureBrowserPortTunnel'
 ] as const
 
 type RetainedRemoteRuntimeSubscription = RemoteRuntimeSubscription & {
@@ -124,6 +132,8 @@ export function registerRuntimeEnvironmentHandlers(store: Store): void {
       }
       clearActiveRuntimeEnvironmentFocusIfMatches(store, removed.id)
       closeSubscriptionsForEnvironment(removed.id)
+      // [FORK] Port tunnels hold their own dedicated sockets; reap them too.
+      closeBrowserPortTunnelsForEnvironment(removed.id)
       return { removed: redactRuntimeEnvironment(removed) }
     }
   )
@@ -140,6 +150,8 @@ export function registerRuntimeEnvironmentHandlers(store: Store): void {
         clearSharedControlSupport(args.selector)
       }
       closeSubscriptionsForEnvironment(environment.id)
+      // [FORK] Port tunnels hold their own dedicated sockets; reap them too.
+      closeBrowserPortTunnelsForEnvironment(environment.id)
       return { disconnected: redactRuntimeEnvironment(environment) }
     }
   )
@@ -256,6 +268,17 @@ export function registerRuntimeEnvironmentHandlers(store: Store): void {
         }
       })
       return { subscriptionId, requestId: subscription.requestId }
+    }
+  )
+  // [FORK] Why: remote browser panes with a localhost URL render in a local
+  // webview; this hands them a local port that relays to the remote host.
+  ipcMain.handle(
+    'runtimeEnvironments:ensureBrowserPortTunnel',
+    async (
+      _event,
+      args: { selector: string; port: number; host?: string }
+    ): Promise<BrowserPortTunnelInfo> => {
+      return ensureBrowserPortTunnel(getUserDataPath(), args)
     }
   )
   ipcMain.handle(

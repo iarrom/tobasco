@@ -121,6 +121,13 @@ import BrowserFind from './BrowserFind'
 import { BrowserMobileDriverOverlay } from './BrowserMobileDriverOverlay'
 import { getShortcutPlatform, useShortcutLabel } from '@/hooks/useShortcutLabel'
 import { getRemoteBrowserFrameStyle } from './remote-browser-frame-style'
+// [FORK] Local rendering of remote loopback dev servers via a port tunnel.
+import { TunneledBrowserPagePane } from './TunneledBrowserPagePane'
+import {
+  getTunnelableRemoteBrowserTarget,
+  mapLocalBrowserUrlToRemote,
+  mapRemoteBrowserUrlToLocal
+} from './remote-browser-port-tunnel-url'
 import {
   getRemoteBrowserKeyboardShortcut,
   getRemoteBrowserKeypressKey
@@ -774,7 +781,11 @@ export default function BrowserPane({
       return
     }
     for (const page of browserPages) {
-      if (getBrowserPageRuntimeEnvironmentId(page, activeRuntimeEnvironmentId)) {
+      // [FORK] Tunneled loopback pages render in a local webview; keep it.
+      if (
+        getBrowserPageRuntimeEnvironmentId(page, activeRuntimeEnvironmentId) &&
+        !getTunnelableRemoteBrowserTarget(page.url)
+      ) {
         destroyPersistentWebview(page.id)
       }
     }
@@ -807,6 +818,59 @@ export default function BrowserPane({
   }, [activeBrowserPageId])
 
   if (activeBrowserRuntimeEnvironmentId) {
+    // [FORK] Loopback URLs on remote workspaces render in a LOCAL webview over
+    // a port tunnel (native latency); everything else stays on the screencast.
+    const tunnelTarget = activeBrowserPage
+      ? getTunnelableRemoteBrowserTarget(activeBrowserPage.url)
+      : null
+    if (activeBrowserPage && tunnelTarget) {
+      return (
+        <TunneledBrowserPagePane
+          key={`${activeBrowserRuntimeEnvironmentId}:${activeBrowserPage.id}:${tunnelTarget.host}:${tunnelTarget.port}`}
+          runtimeEnvironmentId={activeBrowserRuntimeEnvironmentId}
+          target={tunnelTarget}
+          renderLocalPane={(localPort) => (
+            <div className="relative flex h-full min-h-0 flex-1 flex-col">
+              <div className="relative flex min-h-0 flex-1">
+                <BrowserPagePane
+                  key={activeBrowserPage.id}
+                  browserTab={{
+                    ...activeBrowserPage,
+                    url: mapRemoteBrowserUrlToLocal(activeBrowserPage.url, tunnelTarget, localPort)
+                  }}
+                  workspaceId={browserTab.id}
+                  worktreeId={browserTab.worktreeId}
+                  sessionProfileId={browserTab.sessionProfileId ?? null}
+                  sessionPartition={browserTab.sessionPartition ?? null}
+                  isActive={isActive}
+                  isAutomationVisible={automationVisiblePageIds.has(activeBrowserPage.id)}
+                  isMobileDriven={mobileDrivenPageIds.has(activeBrowserPage.id)}
+                  inputLocked={false}
+                  onUpdatePageState={updateBrowserPageState}
+                  onSetUrl={(tabId, url) =>
+                    setBrowserPageUrl(
+                      tabId,
+                      mapLocalBrowserUrlToRemote(url, tunnelTarget, localPort)
+                    )
+                  }
+                />
+              </div>
+            </div>
+          )}
+          renderFallback={() => (
+            <RemoteBrowserPagePane
+              key={`${activeBrowserRuntimeEnvironmentId}:${activeBrowserPage.id}`}
+              browserTab={activeBrowserPage}
+              runtimeEnvironmentId={activeBrowserRuntimeEnvironmentId}
+              worktreeId={browserTab.worktreeId}
+              isActive={isActive}
+              onUpdatePageState={updateBrowserPageState}
+              onSetUrl={setBrowserPageUrl}
+            />
+          )}
+        />
+      )
+    }
     return activeBrowserPage ? (
       <RemoteBrowserPagePane
         key={`${activeBrowserRuntimeEnvironmentId ?? ''}:${activeBrowserPage.id}`}

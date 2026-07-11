@@ -14,7 +14,12 @@ export enum TerminalStreamOpcode {
   Subscribe = 9,
   Unsubscribe = 10,
   SnapshotRequest = 11,
-  Metadata = 12
+  Metadata = 12,
+  // [FORK] workspacePorts.tunnel rides the same binary frame codec because the
+  // WebSocket transport routes every binary message through this decoder.
+  TunnelOpen = 13,
+  TunnelData = 14,
+  TunnelClose = 15
 }
 
 export type TerminalStreamFrame = {
@@ -94,6 +99,9 @@ function isTerminalStreamOpcode(value: number): value is TerminalStreamOpcode {
     value === TerminalStreamOpcode.Subscribe ||
     value === TerminalStreamOpcode.Unsubscribe ||
     value === TerminalStreamOpcode.SnapshotRequest ||
-    value === TerminalStreamOpcode.Metadata
+    value === TerminalStreamOpcode.Metadata ||
+    value === TerminalStreamOpcode.TunnelOpen ||
+    value === TerminalStreamOpcode.TunnelData ||
+    value === TerminalStreamOpcode.TunnelClose
   )
 }

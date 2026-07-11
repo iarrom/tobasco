@@ -3833,7 +3833,19 @@ const api = {
         onClose?: () => void
       }
     ): Promise<RuntimeEnvironmentSubscriptionHandle> =>
-      subscribeRuntimeEnvironmentFromPreload(ipcRenderer, args, callbacks)
+      subscribeRuntimeEnvironmentFromPreload(ipcRenderer, args, callbacks),
+    // [FORK] Local loopback listener relaying to a port on the remote host, so
+    // remote browser panes can render localhost dev servers in a local webview.
+    ensureBrowserPortTunnel: (args: {
+      selector: string
+      port: number
+      host?: string
+    }): Promise<{
+      environmentId: string
+      remoteHost: string
+      remotePort: number
+      localPort: number
+    }> => ipcRenderer.invoke('runtimeEnvironments:ensureBrowserPortTunnel', args)
   },
 
   rateLimits: {

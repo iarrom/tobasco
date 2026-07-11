@@ -3888,7 +3888,10 @@
           "65a9820bd1": "Agent 상태",
           "219ebf1961": "브랜치 이름",
           "automation": "자동화",
-          "folderPathIdentity": "브랜치 / 폴더 경로"
+          "folderPathIdentity": "브랜치 / 폴더 경로",
+          "sidebarView": "Sidebar view",
+          "viewWorkspaces": "Workspaces",
+          "viewAgents": "Agents"
         },
         "SshDisconnectedDialog": {
           "ca4a7892af": "연결 중...",
@@ -4546,6 +4549,21 @@
           "cancel": "Cancel",
           "forget": "Remove from Orca",
           "reconnectAndDelete": "Reconnect & Delete"
+        },
+        "agentsView": {
+          "unpin": "Unpin",
+          "pin": "Pin",
+          "rename": "Rename",
+          "markAsRead": "Mark as Read",
+          "markAsUnread": "Mark as Unread",
+          "archive": "Archive",
+          "newAgent": "New Agent",
+          "customize": "Customize",
+          "newAgentInProject": "New agent in {{value0}}",
+          "more": "More",
+          "pinned": "Pinned",
+          "workspaces": "Workspaces",
+          "emptyProjects": "Add a project to get started"
         }
       },
       "shared": {
@@ -11959,6 +11977,9 @@
                 }
               }
             }
+          },
+          "TunneledBrowserPagePane": {
+            "connecting": "Connecting to the remote port"
           }
         }
       },
@@ -12662,7 +12683,8 @@
         "planPlaceholder": "Plan and design before building…",
         "imagePasteFailed": "Image paste failed.",
         "worktreeNotReady": "Worktree not ready — try again in a moment.",
-        "uploadingAttachments": "Uploading {{value0}} file{{value1}} to remote…"
+        "uploadingAttachments": "Uploading {{value0}} file{{value1}} to remote…",
+        "planNewIdea": "Plan New Idea"
       },
       "tool": {
         "running": "실행 중…",
@@ -12708,7 +12730,12 @@
         "otherPlaceholder": "답변을 입력하세요",
         "cancel": "취소",
         "send": "답변 보내기",
-        "next": "다음"
+        "next": "다음",
+        "title": "Questions",
+        "prev": "Previous question",
+        "pager": "{{value0}} of {{value1}}",
+        "collapse": "Collapse",
+        "skip": "Skip"
       },
       "approval": {
         "title": "{{value0}}을(를) 허용하시겠습니까?",

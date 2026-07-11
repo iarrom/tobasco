@@ -2827,6 +2827,13 @@ export type PreloadApi = {
         onClose?: () => void
       }
     ) => Promise<RuntimeEnvironmentSubscriptionHandle>
+    // [FORK] Loopback tunnel to a port on the remote host for browser panes.
+    ensureBrowserPortTunnel: (args: { selector: string; port: number; host?: string }) => Promise<{
+      environmentId: string
+      remoteHost: string
+      remotePort: number
+      localPort: number
+    }>
   }
   rateLimits: {
     get: () => Promise<RateLimitState>

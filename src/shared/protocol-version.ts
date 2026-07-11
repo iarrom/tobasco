@@ -40,6 +40,9 @@ export const RUNTIME_CAPABILITIES = [
   'terminal.binary-stream.v1',
   'terminal.multiplex.v1',
   'workspace-ports.v1',
+  // [FORK] TCP tunneling of host loopback ports, so remote-host browser panes
+  // can render dev servers in a local webview instead of the screencast.
+  'workspace-ports.tunnel.v1',
   'mobile.tasks.v1',
   PROJECT_HOST_SETUP_RUNTIME_CAPABILITY,
   TASK_SOURCE_CONTEXT_RUNTIME_CAPABILITY,

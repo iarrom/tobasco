@@ -3888,7 +3888,10 @@
           "65a9820bd1": "Agent ステータス",
           "219ebf1961": "ブランチ名",
           "automation": "自動化",
-          "folderPathIdentity": "ブランチ / フォルダパス"
+          "folderPathIdentity": "ブランチ / フォルダパス",
+          "sidebarView": "Sidebar view",
+          "viewWorkspaces": "Workspaces",
+          "viewAgents": "Agents"
         },
         "SshDisconnectedDialog": {
           "ca4a7892af": "接続中...",
@@ -4546,6 +4549,21 @@
           "cancel": "Cancel",
           "forget": "Remove from Orca",
           "reconnectAndDelete": "Reconnect & Delete"
+        },
+        "agentsView": {
+          "unpin": "Unpin",
+          "pin": "Pin",
+          "rename": "Rename",
+          "markAsRead": "Mark as Read",
+          "markAsUnread": "Mark as Unread",
+          "archive": "Archive",
+          "newAgent": "New Agent",
+          "customize": "Customize",
+          "newAgentInProject": "New agent in {{value0}}",
+          "more": "More",
+          "pinned": "Pinned",
+          "workspaces": "Workspaces",
+          "emptyProjects": "Add a project to get started"
         }
       },
       "shared": {
@@ -11959,6 +11977,9 @@
                 }
               }
             }
+          },
+          "TunneledBrowserPagePane": {
+            "connecting": "Connecting to the remote port"
           }
         }
       },
@@ -12662,7 +12683,8 @@
         "planPlaceholder": "Plan and design before building…",
         "imagePasteFailed": "Image paste failed.",
         "worktreeNotReady": "Worktree not ready — try again in a moment.",
-        "uploadingAttachments": "Uploading {{value0}} file{{value1}} to remote…"
+        "uploadingAttachments": "Uploading {{value0}} file{{value1}} to remote…",
+        "planNewIdea": "Plan New Idea"
       },
       "tool": {
         "running": "実行中…",
@@ -12708,7 +12730,12 @@
         "otherPlaceholder": "答えを入力してください",
         "cancel": "キャンセル",
         "send": "回答を送信する",
-        "next": "次へ"
+        "next": "次へ",
+        "title": "Questions",
+        "prev": "Previous question",
+        "pager": "{{value0}} of {{value1}}",
+        "collapse": "Collapse",
+        "skip": "Skip"
       },
       "approval": {
         "title": "{{value0}} を許可しますか?",
