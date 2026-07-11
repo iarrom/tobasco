@@ -1117,6 +1117,11 @@ function createRuntimeEnvironmentsApi(): NonNullable<Partial<PreloadApi>['runtim
       const environment = resolveEnvironment(selector)
       const client = getClientForEnvironment(environment)
       return client.subscribe(method, params, callbacks, { timeoutMs })
+    },
+    // [FORK] Why: a browser tab cannot open local TCP listeners; rejecting
+    // sends the browser pane down its screencast fallback path.
+    ensureBrowserPortTunnel: async () => {
+      throw new Error('Port tunnels are unavailable in the web client.')
     }
   }
 }
